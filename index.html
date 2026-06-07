@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>沃土新生 - 2026全国土地日</title>
+<style>
+  :root {
+    --earth-dark: #5D4037; --earth-mid: #8D6E63; --earth-light: #BCAAA4;
+    --earth-bg: #EFEBE9; --wheat: #F5DEB3; --gold: #FFA000; --gold-light: #FFD54F;
+    --green-sprout: #66BB6A; --danger: #E53935; --text-primary: #3E2723;
+    --text-secondary: #6D4C41; --white: #FFF8F0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(180deg, #F1E0C8 0%, #E8D5B7 30%, #D7CCC8 100%);
+    min-height: 100vh; min-height: 100dvh;
+    display: flex; justify-content: center; align-items: center;
+    overflow: hidden; touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+  }
+  #game-container {
+    width: 100%; max-width: 480px; padding: 8px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  #top-bar {
+    width: 100%;
+    background: linear-gradient(180deg, rgba(93,64,55,0.92), rgba(109,76,65,0.9));
+    border-radius: 12px; padding: 10px 14px; color: #FFF8F0;
+    box-shadow: 0 2px 8px rgba(62,39,35,0.15);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  #top-bar .info-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px; font-weight: 500;
+  }
+  #level-name { font-size: 15px; font-weight: 700; color: #FFD54F; letter-spacing: 1px; }
+  .stat { display: flex; align-items: center; gap: 4px; }
+  .stat-icon { font-size: 16px; }
+  .stat-value { font-weight: 700; font-size: 14px; color: #FFD54F; }
+  #grain-bar-wrapper { display: flex; align-items: center; gap: 8px; }
+  #farmer-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #FFCC80; border: 2px solid #FFE0B2; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  #grain-bar-outer {
+    flex: 1; height: 14px; background: rgba(255,255,255,0.18);
+    border-radius: 7px; overflow: hidden; position: relative;
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+  #grain-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, #F9A825, #FFD54F, #FFB300);
+    border-radius: 7px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+  #grain-bar-label { font-size: 10px; font-weight: 600; color: #FFE082; white-space: nowrap; min-width: 42px; text-align: right; }
+  #board-wrapper {
+    position: relative; background: rgba(255,248,240,0.35);
+    border-radius: 12px; padding: 8px; box-shadow: 0 2px 8px rgba(62,39,35,0.15);
+    display: flex; align-items: center; justify-content: center;
+  }
+  canvas#game-canvas { display: block; border-radius: 6px; cursor: pointer; }
+  #cell-info {
+    width: 100%; max-width: 480px; padding: 6px 14px;
+    background: rgba(93,64,55,0.85); border-radius: 8px;
+    color: #FFF8F0; font-size: 12px; display: flex;
+    align-items: center; gap: 8px; min-height: 34px;
+    box-shadow: 0 1px 4px rgba(62,39,35,0.15);
+    transition: background 0.2s;
+  }
+  #cell-info-icon { font-size: 18px; flex-shrink: 0; }
+  #cell-info-name { font-weight: 600; white-space: nowrap; min-width: 56px; }
+  #cell-info-desc { font-size: 11px; color: #FFE082; opacity: 0.85; }
+  #cell-info.highlight { background: rgba(93,64,55,0.95); box-shadow: 0 2px 8px rgba(255,160,0,0.3); }
+
+  /* Level Selector */
+  #level-selector {
+    width: 100%; max-width: 480px; display: flex;
+    align-items: center; gap: 6px; padding: 6px 8px;
+    background: rgba(93,64,55,0.45); border-radius: 10px;
+    flex-wrap: wrap; justify-content: center;
+  }
+  #level-selector .level-select-label {
+    font-size: 12px; font-weight: 600; color: #FFE082;
+    white-space: nowrap; margin-right: 2px;
+  }
+  .level-btn {
+    flex: 1; min-width: 90px; padding: 6px 8px;
+    border-radius: 16px; border: 2px solid transparent;
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    transition: all 0.25s; white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+  .level-btn.active {
+    background: linear-gradient(135deg, #FFA000, #FF8F00);
+    color: #FFF; border-color: #FFD54F;
+    box-shadow: 0 2px 8px rgba(255,160,0,0.35);
+  }
+  .level-btn.unlocked {
+    background: rgba(255,255,255,0.85);
+    color: #5D4037; border-color: #BCAAA4;
+  }
+  .level-btn.unlocked:hover { background: #FFF; border-color: #8D6E63; }
+  .level-btn.locked {
+    background: rgba(255,255,255,0.25);
+    color: #A1887F; border-color: rgba(255,255,255,0.15);
+    cursor: not-allowed; opacity: 0.7;
+  }
+  .level-btn:active:not(.locked) { transform: scale(0.95); }
+
+  #bottom-bar { width: 100%; display: flex; gap: 10px; justify-content: center; }
+  #bottom-bar button {
+    flex: 1; max-width: 140px; padding: 10px 0; border: none; border-radius: 22px;
+    font-size: 14px; font-weight: 600; letter-spacing: 0.5px; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s; touch-action: manipulation;
+  }
+  #bottom-bar button:active { transform: scale(0.95); }
+  #btn-restart { background: #ECEFF1; color: #6D4C41; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+  #btn-next { background: linear-gradient(135deg, #66BB6A, #43A047); color: white; box-shadow: 0 3px 10px rgba(67,160,71,0.35); display: none; }
+  #popup-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(62,39,35,0.55); display: none;
+    align-items: center; justify-content: center; z-index: 100;
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  }
+  #popup-overlay.active { display: flex; }
+  #popup-box {
+    background: linear-gradient(180deg, #FFFDF7, #FFF8E7);
+    border-radius: 16px; padding: 24px 20px; max-width: 340px; width: 85%;
+    text-align: center; box-shadow: 0 8px 32px rgba(62,39,35,0.25);
+    animation: popupIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes popupIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  #popup-icon { font-size: 48px; margin-bottom: 8px; }
+  #popup-title { font-size: 20px; font-weight: 700; color: #3E2723; margin-bottom: 6px; }
+  #popup-message { font-size: 13px; color: #6D4C41; line-height: 1.7; margin-bottom: 16px; }
+  #popup-quote {
+    background: #FFF8E1; border-left: 3px solid #FFA000;
+    padding: 10px 12px; font-size: 12px; color: #6D4C41; line-height: 1.6;
+    text-align: left; margin-bottom: 16px; border-radius: 0 8px 8px 0; display: none;
+  }
+  #popup-quote .attribution { display: block; text-align: right; color: #A1887F; font-size: 11px; margin-top: 4px; }
+  #popup-btn {
+    display: inline-block; padding: 10px 36px; border: none; border-radius: 22px;
+    font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px;
+    transition: transform 0.15s;
+  }
+  #popup-btn:active { transform: scale(0.95); }
+  .win-btn { background: linear-gradient(135deg, #66BB6A, #43A047); color: white; box-shadow: 0 3px 12px rgba(67,160,71,0.4); }
+  .lose-btn { background: linear-gradient(135deg, #EF5350, #E53935); color: white; box-shadow: 0 3px 12px rgba(229,57,53,0.35); }
+  .summary-btn { background: linear-gradient(135deg, #FFA000, #FF8F00); color: white; box-shadow: 0 3px 12px rgba(255,160,0,0.4); }
+  #guide-tooltip {
+    position: fixed; z-index: 80; background: rgba(62,39,35,0.93); color: #FFF;
+    padding: 12px 16px; border-radius: 12px; font-size: 13px; line-height: 1.6;
+    max-width: 260px; text-align: left; pointer-events: auto;
+    display: none; box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    transition: opacity 0.3s; cursor: default;
+  }
+  #guide-tooltip .guide-close {
+    display: inline-block; margin-top: 8px; padding: 4px 14px;
+    background: rgba(255,255,255,0.2); border-radius: 12px;
+    font-size: 11px; cursor: pointer; color: #FFE082;
+    text-align: center; transition: background 0.2s;
+  }
+  #guide-tooltip .guide-close:hover { background: rgba(255,255,255,0.35); }
+  #guide-tooltip::after {
+    content: ''; position: absolute; width: 0; height: 0;
+    border-left: 8px solid transparent; border-right: 8px solid transparent;
+  }
+  #guide-tooltip.arrow-down::after {
+    top: -8px; left: 50%; transform: translateX(-50%);
+    border-bottom: 8px solid rgba(62,39,35,0.93);
+    border-top: none;
+  }
+  #guide-tooltip.arrow-up::after {
+    bottom: -8px; left: 50%; transform: translateX(-50%);
+    border-top: 8px solid rgba(62,39,35,0.93);
+    border-bottom: none;
+  }
+  #guide-backdrop {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.35); z-index: 75; display: none;
+    pointer-events: auto;
+  }
+  #guide-backdrop.active { display: block; }
+  #btn-mute {
+    position: fixed; top: 12px; right: 12px; width: 36px; height: 36px;
+    border-radius: 50%; border: none; background: rgba(255,255,255,0.75);
+    font-size: 18px; cursor: pointer; z-index: 50;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    display: flex; align-items: center; justify-content: center;
+  }
+  #summary-screen {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(180deg, #E8D5B7, #D7CCC8);
+    z-index: 200; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; text-align: center;
+  }
+  #summary-screen.active { display: flex; }
+  #summary-screen h2 { font-size: 24px; color: #3E2723; margin-bottom: 8px; }
+  .summary-stats { font-size: 15px; color: #5D4037; line-height: 2; margin-bottom: 16px; }
+  .summary-stats span { font-weight: 700; color: #33691E; }
+</style>
+</head>
+<body>
+
+<button id="btn-mute" aria-label="音效开关">🔊</button>
+
+<div id="game-container">
+  <div id="top-bar">
+    <div class="info-row">
+      <span id="level-name">复苏之风</span>
+      <span class="stat"><span class="stat-icon">🌾</span> 复耕 <span class="stat-value" id="reclaim-progress">0/6</span></span>
+      <span class="stat"><span class="stat-icon">👣</span> 步数 <span class="stat-value" id="steps-left">30</span></span>
+    </div>
+    <div id="grain-bar-wrapper">
+      <div id="farmer-avatar">👨‍🌾</div>
+      <div id="grain-bar-outer"><div id="grain-bar-inner" style="width:100%"></div></div>
+      <span id="grain-bar-label">粮食 100%</span>
+    </div>
+  </div>
+  <div id="level-selector">
+    <span class="level-select-label">🗺️ 关卡</span>
+    <button class="level-btn active" data-level="1">1 · 复苏之风</button>
+    <button class="level-btn locked" data-level="2">🔒 2 · 大地疗愈</button>
+    <button class="level-btn locked" data-level="3">🔒 3 · 沃野守卫</button>
+  </div>
+  <div id="board-wrapper"><canvas id="game-canvas"></canvas></div>
+  <div id="cell-info">
+    <span id="cell-info-icon">📦</span>
+    <span id="cell-info-name">点击格子查看信息</span>
+    <span id="cell-info-desc"></span>
+  </div>
+  <div id="bottom-bar">
+    <button id="btn-restart">🔄 重玩</button>
+    <button id="btn-next">▶ 下一关</button>
+  </div>
+</div>
+
+<div id="popup-overlay">
+  <div id="popup-box">
+    <div id="popup-icon"></div>
+    <div id="popup-title"></div>
+    <div id="popup-message"></div>
+    <div id="popup-quote"><span id="popup-quote-text"></span><span class="attribution" id="popup-quote-source"></span></div>
+    <button id="popup-btn"></button>
+  </div>
+</div>
+
+<div id="guide-backdrop"></div>
+<div id="guide-tooltip"></div>
+
+<div id="summary-screen">
+  <div style="font-size:56px;margin-bottom:12px;">🌍🌾</div>
+  <h2>沃土新生！</h2>
+  <p style="color:#5D4037;margin-bottom:16px;">感谢你为守护土地做出的贡献</p>
+  <div class="summary-stats">
+    共修复耕地：<span id="summary-total-farmland">0</span> 块<br>
+    节约粮食储备：<span id="summary-grain-saved">0</span>%<br>
+    通关关卡：<span id="summary-levels-cleared">3</span> / 3
+  </div>
+  <p style="font-size:13px;color:#8D6E63;max-width:280px;line-height:1.6;margin-bottom:20px;">
+    "珍惜每一寸土地 促进高质量发展"<br>——2026年全国土地日
+  </p>
+  <button id="btn-summary-restart" style="padding:12px 40px;border:none;border-radius:22px;font-size:16px;font-weight:600;background:linear-gradient(135deg,#FFA000,#FF8F00);color:white;cursor:pointer;box-shadow:0 3px 12px rgba(255,160,0,0.4);">🔄 重新开始</button>
+</div>
+
+<script>
+// ============================================================
+// 1. CONFIG — 配置层
+// ============================================================
+
+const BLOCK = {
+  COMPACTION:    'compaction',     // 板结块
+  HEAVY_METAL:   'heavy_metal',    // 重金属污染块
+  ORGANIC:       'organic',        // 有机污染物
+  DESERT:        'desert',         // 沙化块
+  SALINE:        'saline',         // 盐碱晶
+  LOOSE_SOIL:    'loose_soil',     // 疏松土块
+  HEALTHY_FARM:  'healthy_farm'    // 健康耕地
+};
+
+const POLLUTANTS = [BLOCK.COMPACTION, BLOCK.HEAVY_METAL, BLOCK.ORGANIC, BLOCK.DESERT, BLOCK.SALINE];
+
+// Block colors (fill, stroke)
+const BLOCK_COLORS = {
+  [BLOCK.COMPACTION]:   { fill: '#8D6E63', stroke: '#6D4C41', light: '#A1887F' },
+  [BLOCK.HEAVY_METAL]:  { fill: '#7B1FA2', stroke: '#6A1B9A', light: '#9C27B0' },
+  [BLOCK.ORGANIC]:      { fill: '#558B2F', stroke: '#33691E', light: '#689F38' },
+  [BLOCK.DESERT]:       { fill: '#F9A825', stroke: '#F57F17', light: '#FBC02D' },
+  [BLOCK.SALINE]:       { fill: '#B0BEC5', stroke: '#90A4AE', light: '#CFD8DC' },
+  [BLOCK.LOOSE_SOIL]:   { fill: '#A1887F', stroke: '#8D6E63', light: '#BCAAA4' },
+  [BLOCK.HEALTHY_FARM]: { fill: '#5D4037', stroke: '#4E342E', light: '#6D4C41' },
+};
+
+const BLOCK_NAMES = {
+  [BLOCK.COMPACTION]:   '板结块',
+  [BLOCK.HEAVY_METAL]:  '重金属污染块',
+  [BLOCK.ORGANIC]:      '有机污染物',
+  [BLOCK.DESERT]:       '沙化块',
+  [BLOCK.SALINE]:       '盐碱晶',
+  [BLOCK.LOOSE_SOIL]:   '疏松土块',
+  [BLOCK.HEALTHY_FARM]: '健康耕地'
+};
+
+const BLOCK_DESC = {
+  [BLOCK.COMPACTION]:   '土壤板结硬化，需松动改良',
+  [BLOCK.HEAVY_METAL]:  '重金属污染严重，需净化处理',
+  [BLOCK.ORGANIC]:      '有机物腐烂堆积，需分解转化',
+  [BLOCK.DESERT]:       '土地沙化蔓延，需固沙保水',
+  [BLOCK.SALINE]:       '盐碱结晶侵蚀，需淋盐洗碱',
+  [BLOCK.LOOSE_SOIL]:   '土壤已疏松，再修复一次即可复耕',
+  [BLOCK.HEALTHY_FARM]: '✨ 健康耕地！粮食安全有保障'
+};
+
+const LEVELS = [
+  {
+    name: '复苏之风', size: 6, target: 6, steps: 30,
+    grainInit: 100, grainPenalty: 10, grainGain: 15,
+    pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC],
+    looseSoilInit: [3, 4], hasGuide: true
+  },
+  {
+    name: '大地疗愈', size: 7, target: 12, steps: 18,
+    grainInit: 60, grainPenalty: 10, grainGain: 8,
+    pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC, BLOCK.HEAVY_METAL],
+    looseSoilInit: [2, 3], hasGuide: false
+  },
+  {
+    name: '沃野守卫', size: 8, target: 18, steps: 13,
+    grainInit: 33, grainPenalty: 10, grainGain: 3,
+    pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC, BLOCK.HEAVY_METAL, BLOCK.SALINE],
+    looseSoilInit: [2, 2], hasGuide: false
+  }
+];
+
+const QUOTES = [
+  { text: '耕地是粮食生产的命根子，是中华民族永续发展的根基。', source: '——习近平' },
+  { text: '要像保护大熊猫一样保护耕地。', source: '——习近平' },
+  { text: '严守耕地红线，把中国人的饭碗牢牢端在自己手中。', source: '——习近平' },
+  { text: '粮食安全是"国之大者"。', source: '——习近平' },
+  { text: '保护耕地就是保护我们的生命线。', source: '——习近平' },
+  { text: '农田就是农田，而且必须是良田。', source: '——习近平' },
+  { text: '坚决守住18亿亩耕地红线。', source: '——习近平' },
+  { text: '耕地保护是一个系统工程，要采取长牙齿的硬措施。', source: '——习近平' },
+  { text: '保障国家粮食安全的根本在耕地。', source: '——习近平' },
+  { text: '耕地是粮食生产的命根子。', source: '——习近平' },
+  { text: '要牢牢守住耕地保护红线，确保国家粮食安全。', source: '——习近平' },
+  { text: '坚持最严格的耕地保护制度。', source: '——习近平' }
+];
+
+// ============================================================
+// 2. UTILS
+// ============================================================
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randChoice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = randInt(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+function seededRand(r, c, seed) { let h = (r * 374761393 + c * 668265263 + seed * 1274126177) & 0x7fffffff; h = ((h >> 16) ^ h) * 0x45d9f3b; h = ((h >> 16) ^ h) & 0x7fffffff; return h / 0x7fffffff; }
+
+// ============================================================
+// 2.5. ANIMATION UTILITIES
+// ============================================================
+function animateOver(duration, updateFn) {
+  return new Promise(resolve => {
+    const start = performance.now();
+    function tick(time) {
+      const t = Math.min(1, (time - start) / duration);
+      updateFn(t);
+      if (t < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        resolve();
+      }
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+function easeOutBack(t) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
+
+function easeOutBounce(t) {
+  const n1 = 7.5625, d1 = 2.75;
+  if (t < 1 / d1) return n1 * t * t;
+  else if (t < 2 / d1) return n1 * (t -= 1.5 / d1) * t + 0.75;
+  else if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+  else return n1 * (t -= 2.625 / d1) * t + 0.984375;
+}
+
+// Animation state
+const animState = {
+  // Bounce cells: { key -> {startTime, intensity} }
+  bounces: {},
+  // Swap animation
+  swap: null, // {r1,c1,r2,c2,startTime,duration:300}
+  // Elimination animation
+  elim: null, // {cells:[{r,c,type}], startTime, duration:400}
+  // Gravity drop animation
+  drops: null, // {items:[{c,fromR,toR,type}], startTime, duration:500}
+};
+
+function animCellKey(r, c) { return r * 20 + c; }
+
+function addBounce(r, c, intensity = 1.0) {
+  animState.bounces[animCellKey(r, c)] = { startTime: performance.now(), intensity };
+  startRenderLoop();
+  // Spawn a few sparkle particles
+  if (cellSize > 0 && game.board && game.board[r] && game.board[r][c]) {
+    const cx = c * cellSize + cellSize / 2;
+    const cy = r * cellSize + cellSize / 2;
+    spawnParticles(cx, cy, 6, '#FFD54F', cellSize * 0.06, 300);
+  }
+}
+
+function clearBounces() {
+  animState.bounces = {};
+}
+
+// ============================================================
+// 3. BOARD — 棋盘数据模型
+// ============================================================
+function createEmptyBoard(size) {
+  return Array.from({ length: size }, () => Array(size).fill(null));
+}
+
+function cloneBoard(board) {
+  return board.map(row => [...row]);
+}
+
+function boardToString(board) {
+  return board.map(row => row.map(c => c ? c[0] : '.').join('')).join('\n');
+}
+
+function createBoard(size, pollutantTypes, looseSoilCount) {
+  const board = createEmptyBoard(size);
+  const totalCells = size * size;
+  const allPositions = [];
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) allPositions.push({ r, c });
+
+  // Shuffle positions for random placement
+  const shuffled = shuffle([...allPositions]);
+
+  // Place loose soil blocks
+  const count = typeof looseSoilCount === 'number'
+    ? looseSoilCount
+    : randInt(looseSoilCount[0], looseSoilCount[1]);
+  for (let i = 0; i < count; i++) {
+    const pos = shuffled[i];
+    board[pos.r][pos.c] = BLOCK.LOOSE_SOIL;
+  }
+
+  // Fill remaining with random pollutants
+  for (let i = count; i < totalCells; i++) {
+    const pos = shuffled[i];
+    board[pos.r][pos.c] = randChoice(pollutantTypes);
+  }
+
+  // Remove initial matches
+  removeInitialMatches(board, pollutantTypes);
+  return board;
+}
+
+function removeInitialMatches(board, pollutantTypes) {
+  const size = board.length;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const matches = findAllMatchesRaw(board);
+    if (matches.length === 0) return;
+
+    // Pick a random matched cell and replace it with a different pollutant
+    const cell = randChoice(matches);
+    const currentType = board[cell.r][cell.c];
+    const candidates = pollutantTypes.filter(t => t !== currentType);
+    if (candidates.length > 0) {
+      board[cell.r][cell.c] = randChoice(candidates);
+    } else {
+      // Only one pollutant type — swap with a random neighbor
+      const neighbors = getNeighbors(cell.r, cell.c, size);
+      if (neighbors.length > 0) {
+        const nb = randChoice(neighbors);
+        const tmp = board[cell.r][cell.c];
+        board[cell.r][cell.c] = board[nb.r][nb.c];
+        board[nb.r][nb.c] = tmp;
+      }
+    }
+  }
+}
+
+function getNeighbors(r, c, size) {
+  const neighbors = [];
+  if (r > 0) neighbors.push({ r: r - 1, c });
+  if (r < size - 1) neighbors.push({ r: r + 1, c });
+  if (c > 0) neighbors.push({ r, c: c - 1 });
+  if (c < size - 1) neighbors.push({ r, c: c + 1 });
+  return neighbors;
+}
+
+function isAdjacent(r1, c1, r2, c2) {
+  return (Math.abs(r1 - r2) + Math.abs(c1 - c2)) === 1;
+}
+
+// ============================================================
+// 4. MATCH DETECTOR — 匹配检测
+// ============================================================
+function findAllMatchesRaw(board) {
+  const size = board.length;
+  const cellInMatch = new Set();
+
+  function key(r, c) { return r * size + c; }
+
+  // Scan horizontal
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size - 2; c++) {
+      const a = board[r][c], b = board[r][c+1], d = board[r][c+2];
+      if (a && a === b && b === d && a !== BLOCK.HEALTHY_FARM) {
+        cellInMatch.add(key(r, c));
+        cellInMatch.add(key(r, c+1));
+        cellInMatch.add(key(r, c+2));
+      }
+    }
+  }
+
+  // Scan vertical
+  for (let c = 0; c < size; c++) {
+    for (let r = 0; r < size - 2; r++) {
+      const a = board[r][c], b = board[r+1][c], d = board[r+2][c];
+      if (a && a === b && b === d && a !== BLOCK.HEALTHY_FARM) {
+        cellInMatch.add(key(r, c));
+        cellInMatch.add(key(r+1, c));
+        cellInMatch.add(key(r+2, c));
+      }
+    }
+  }
+
+  return [...cellInMatch].map(v => ({ r: Math.floor(v / size), c: v % size }));
+}
+
+function findAllMatches(board) {
+  const size = board.length;
+  const cellInMatch = new Set();
+  const matchGroups = [];
+
+  function key(r, c) { return r * size + c; }
+
+  // Scan horizontal
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size - 2; c++) {
+      const a = board[r][c], b = board[r][c+1], d = board[r][c+2];
+      if (a && a === b && b === d && a !== BLOCK.HEALTHY_FARM) {
+        const cells = [{ r, c }, { r, c: c+1 }, { r, c: c+2 }];
+        matchGroups.push({ cells, type: a });
+        cells.forEach(cell => cellInMatch.add(key(cell.r, cell.c)));
+      }
+    }
+  }
+
+  // Scan vertical
+  for (let c = 0; c < size; c++) {
+    for (let r = 0; r < size - 2; r++) {
+      const a = board[r][c], b = board[r+1][c], d = board[r+2][c];
+      if (a && a === b && b === d && a !== BLOCK.HEALTHY_FARM) {
+        const cells = [{ r, c }, { r: r+1, c }, { r: r+2, c }];
+        matchGroups.push({ cells, type: a });
+        cells.forEach(cell => cellInMatch.add(key(cell.r, cell.c)));
+      }
+    }
+  }
+
+  return { matchGroups, matchedCells: cellInMatch };
+}
+
+// ============================================================
+// 5. ELIMINATOR — 消除与转化
+// ============================================================
+function processMatches(board, matchGroups) {
+  const size = board.length;
+  const newBoard = cloneBoard(board);
+  let reclaimedCount = 0;
+
+  // Track which position each cell transforms to
+  // For each match: middle cell transforms, sides become null
+  // If a cell is in multiple matches, prioritize middle role
+  const transforms = {}; // key -> newType (null means empty)
+
+  function key(r, c) { return r * size + c; }
+
+  for (const match of matchGroups) {
+    const cells = match.cells;
+    // Sort cells by position to identify middle
+    if (cells[0].r === cells[1].r && cells[1].r === cells[2].r) {
+      // Horizontal match - sort by column
+      cells.sort((a, b) => a.c - b.c);
+    } else {
+      // Vertical match - sort by row
+      cells.sort((a, b) => a.r - b.r);
+    }
+
+    const middle = cells[1];
+    const mk = key(middle.r, middle.c);
+
+    // Middle transforms
+    if (match.type === BLOCK.LOOSE_SOIL) {
+      transforms[mk] = BLOCK.HEALTHY_FARM;
+      reclaimedCount++;
+    } else {
+      transforms[mk] = BLOCK.LOOSE_SOIL;
+    }
+
+    // Sides become empty (unless they're also a middle in another match)
+    const sk0 = key(cells[0].r, cells[0].c);
+    const sk2 = key(cells[2].r, cells[2].c);
+    if (!(sk0 in transforms)) transforms[sk0] = null;
+    if (!(sk2 in transforms)) transforms[sk2] = null;
+  }
+
+  // Apply transforms
+  for (const [k, v] of Object.entries(transforms)) {
+    const r = Math.floor(Number(k) / size);
+    const c = Number(k) % size;
+    newBoard[r][c] = v;
+  }
+
+  return { board: newBoard, reclaimedCount };
+}
+
+// ============================================================
+// 6. GRAVITY — 重力掉落与填充
+// ============================================================
+function applyGravity(board, pollutantTypes) {
+  const size = board.length;
+  const newBoard = createEmptyBoard(size);
+
+  for (let c = 0; c < size; c++) {
+    // Collect non-null blocks from bottom to top
+    const blocks = [];
+    for (let r = size - 1; r >= 0; r--) {
+      if (board[r][c] !== null) {
+        blocks.push(board[r][c]);
+      }
+    }
+
+    // Fill from bottom up
+    let blockIdx = 0;
+    for (let r = size - 1; r >= 0; r--) {
+      if (blockIdx < blocks.length) {
+        newBoard[r][c] = blocks[blockIdx];
+        blockIdx++;
+      } else {
+        // Top empty cells: fill with random pollutants
+        newBoard[r][c] = randChoice(pollutantTypes);
+      }
+    }
+  }
+
+  return newBoard;
+}
+
+function resolveChain(board, pollutantTypes) {
+  let totalReclaimed = 0;
+  let safety = 100;
+
+  while (safety-- > 0) {
+    const { matchGroups } = findAllMatches(board);
+    if (matchGroups.length === 0) break;
+
+    const result = processMatches(board, matchGroups);
+    board = result.board;
+    totalReclaimed += result.reclaimedCount;
+    board = applyGravity(board, pollutantTypes);
+  }
+
+  return { board, totalReclaimed };
+}
+
+// ============================================================
+// 7. RENDERER — Canvas 渲染
+// ============================================================
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+let cellSize = 0;
+let boardRenderSize = 6;
+
+function calcCellSize(boardSize) {
+  const maxWidth = Math.min(window.innerWidth - 24, 480) - 16;
+  return Math.floor(maxWidth / boardSize);
+}
+
+function resizeCanvas(boardSize) {
+  cellSize = calcCellSize(boardSize);
+  const cs = cellSize * boardSize;
+  canvas.width = cs;
+  canvas.height = cs;
+  canvas.style.width = cs + 'px';
+  canvas.style.height = cs + 'px';
+  boardRenderSize = boardSize;
+}
+
+// --- Block Drawing Functions ---
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function drawBlock(x, y, size, type, r, c, scaleOverride) {
+  const pad = Math.max(1, Math.floor(size * 0.08));
+  const inner = size - pad * 2;
+  const colors = BLOCK_COLORS[type];
+  if (!colors) return;
+
+  // Compute bounce scale
+  let bounceScale = scaleOverride || 1;
+  const key = animCellKey(r, c);
+  const bounce = animState.bounces[key];
+  if (bounce) {
+    const elapsed = performance.now() - bounce.startTime;
+    const duration = 400;
+    if (elapsed > duration) {
+      delete animState.bounces[key];
+    } else {
+      const t = elapsed / duration;
+      bounceScale = 1 + bounce.intensity * 0.18 * Math.sin(t * Math.PI * 2.5) * Math.max(0, 1 - t * 1.2);
+    }
+  }
+
+  ctx.save();
+
+  // Apply bounce scale
+  if (bounceScale !== 1) {
+    const cx = x + size / 2;
+    const cy = y + size / 2;
+    ctx.translate(cx, cy);
+    ctx.scale(bounceScale, bounceScale);
+    ctx.translate(-cx, -cy);
+  }
+
+  // Shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.2)';
+  ctx.shadowBlur = size * 0.06;
+  ctx.shadowOffsetX = 1;
+  ctx.shadowOffsetY = 1;
+
+  // Rounded rect background
+  roundRect(x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
+  ctx.fillStyle = colors.fill;
+  ctx.fill();
+
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  // Inner highlight (top-left light area)
+  const hlGrad = ctx.createLinearGradient(x + pad, y + pad, x + pad + inner, y + pad + inner);
+  hlGrad.addColorStop(0, colors.light);
+  hlGrad.addColorStop(0.5, colors.fill);
+  hlGrad.addColorStop(1, colors.stroke);
+  roundRect(x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
+  ctx.fillStyle = hlGrad;
+  ctx.fill();
+
+  // Stroke
+  roundRect(x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
+  ctx.strokeStyle = colors.stroke;
+  ctx.lineWidth = Math.max(1, size * 0.03);
+  ctx.stroke();
+
+  // Texture patterns
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const s = inner * 0.45;
+
+  switch (type) {
+    case BLOCK.COMPACTION:
+      // Crack lines
+      ctx.strokeStyle = 'rgba(62,39,35,0.5)';
+      ctx.lineWidth = Math.max(1, size * 0.025);
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.6, cy - s * 0.7);
+      ctx.lineTo(cx + s * 0.1, cy - s * 0.1);
+      ctx.lineTo(cx + s * 0.5, cy + s * 0.6);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.4, cy + s * 0.5);
+      ctx.lineTo(cx + s * 0.2, cy);
+      ctx.lineTo(cx + s * 0.7, cy - s * 0.4);
+      ctx.stroke();
+      break;
+
+    case BLOCK.HEAVY_METAL:
+      // Toxic bubbles
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.beginPath(); ctx.arc(cx - s * 0.3, cy - s * 0.2, s * 0.25, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s * 0.35, cy - s * 0.4, s * 0.18, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - s * 0.1, cy + s * 0.4, s * 0.22, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s * 0.4, cy + s * 0.25, s * 0.15, 0, Math.PI * 2); ctx.fill();
+      break;
+
+    case BLOCK.ORGANIC:
+      // Decay spots
+      ctx.fillStyle = 'rgba(27,94,32,0.5)';
+      ctx.beginPath(); ctx.arc(cx - s * 0.35, cy - s * 0.3, s * 0.28, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s * 0.3, cy + s * 0.3, s * 0.32, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s * 0.5, cy - s * 0.5, s * 0.18, 0, Math.PI * 2); ctx.fill();
+      break;
+
+    case BLOCK.DESERT:
+      // Sand grain dots (deterministic by position)
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      for (let i = 0; i < 8; i++) {
+        const dx = (seededRand(r, c, i * 2) - 0.5) * s * 1.5;
+        const dy = (seededRand(r, c, i * 2 + 1) - 0.5) * s * 1.5;
+        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, s * 0.08, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+
+    case BLOCK.SALINE:
+      // Crystal facets
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = Math.max(1, size * 0.02);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - s * 0.8);
+      ctx.lineTo(cx + s * 0.7, cy);
+      ctx.lineTo(cx, cy + s * 0.8);
+      ctx.lineTo(cx - s * 0.7, cy);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.7, cy); ctx.lineTo(cx + s * 0.7, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.8); ctx.lineTo(cx, cy + s * 0.8); ctx.stroke();
+      break;
+
+    case BLOCK.LOOSE_SOIL:
+      // Grain texture (deterministic by position)
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      for (let i = 0; i < 5; i++) {
+        const dx = (seededRand(r, c, i * 2) - 0.5) * s * 1.3;
+        const dy = (seededRand(r, c, i * 2 + 1) - 0.5) * s * 1.3;
+        ctx.fillRect(cx + dx - s * 0.06, cy + dy - s * 0.06, s * 0.18, s * 0.12);
+      }
+      break;
+
+    case BLOCK.HEALTHY_FARM:
+      // Green sprout
+      ctx.fillStyle = '#4CAF50';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - s * 0.5);
+      ctx.quadraticCurveTo(cx + s * 0.5, cy - s * 0.7, cx + s * 0.25, cy + s * 0.1);
+      ctx.quadraticCurveTo(cx + s * 0.1, cy + s * 0.15, cx, cy + s * 0.05);
+      ctx.quadraticCurveTo(cx - s * 0.1, cy + s * 0.15, cx - s * 0.25, cy + s * 0.1);
+      ctx.quadraticCurveTo(cx - s * 0.5, cy - s * 0.7, cx, cy - s * 0.5);
+      ctx.fill();
+      // Second smaller leaf
+      ctx.fillStyle = '#66BB6A';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - s * 0.35);
+      ctx.quadraticCurveTo(cx + s * 0.35, cy - s * 0.5, cx + s * 0.15, cy + s * 0.2);
+      ctx.quadraticCurveTo(cx - s * 0.05, cy + s * 0.1, cx, cy - s * 0.05);
+      ctx.quadraticCurveTo(cx + s * 0.05, cy - s * 0.3, cx, cy - s * 0.35);
+      ctx.fill();
+      break;
+  }
+
+  ctx.restore();
+}
+
+function drawBoard(board, highlightCells = null) {
+  const size = board.length;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Earth-tone background with subtle texture
+  const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  bgGrad.addColorStop(0, '#D5C8B5');
+  bgGrad.addColorStop(0.5, '#D7CCC8');
+  bgGrad.addColorStop(1, '#C9BBA8');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Subtle grain texture overlay
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  for (let i = 0; i < canvas.width; i += 4) {
+    for (let j = 0; j < canvas.height; j += 4) {
+      if ((i + j) % 8 === 0) {
+        ctx.fillRect(i, j, 2, 2);
+      }
+    }
+  }
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= size; i++) {
+    const pos = i * cellSize;
+    ctx.beginPath(); ctx.moveTo(pos, 0); ctx.lineTo(pos, canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, pos); ctx.lineTo(canvas.width, pos); ctx.stroke();
+  }
+
+  // Subtle darker border between cells
+  ctx.strokeStyle = 'rgba(139,119,101,0.2)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= size; i++) {
+    const pos = i * cellSize + 0.5;
+    ctx.beginPath(); ctx.moveTo(pos, 0); ctx.lineTo(pos, canvas.height); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, pos); ctx.lineTo(canvas.width, pos); ctx.stroke();
+  }
+
+  // Build drop & skip maps from animation state
+  const dropMap = {};
+  const skipCells = new Set();
+  if (animState.elim) {
+    for (const cell of animState.elim.cells) {
+      skipCells.add(animCellKey(cell.r, cell.c));
+    }
+  }
+  if (animState.drops) {
+    const t = animState.drops.progress || 0;
+    const ease = easeOutBack(t);
+    for (const d of animState.drops.items) {
+      const currentR = d.fromR + (d.toR - d.fromR) * ease;
+      dropMap[animCellKey(d.toR, d.c)] = { currentR, type: d.type };
+      // Skip drawing at the FROM position (it's moving)
+      if (d.fromR >= 0) skipCells.add(animCellKey(d.fromR, d.c));
+    }
+  }
+
+  // Draw blocks
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const key = animCellKey(r, c);
+      if (skipCells.has(key)) continue;
+
+      if (dropMap[key]) {
+        // Currently dropping — draw at interpolated position
+        drawBlock(c * cellSize, dropMap[key].currentR * cellSize, cellSize, dropMap[key].type, r, c);
+      } else if (board[r][c]) {
+        drawBlock(c * cellSize, r * cellSize, cellSize, board[r][c], r, c);
+      }
+    }
+  }
+
+  // Draw swap animation overlay
+  if (animState.swap) {
+    const s = animState.swap;
+    const elapsed = performance.now() - s.startTime;
+    const t = Math.min(1, elapsed / s.duration);
+    const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    const x1 = s.c1 * cellSize, y1 = s.r1 * cellSize;
+    const x2 = s.c2 * cellSize, y2 = s.r2 * cellSize;
+    const px1 = x1 + (x2 - x1) * ease;
+    const py1 = y1 + (y2 - y1) * ease;
+    const px2 = x2 + (x1 - x2) * ease;
+    const py2 = y2 + (y1 - y2) * ease;
+    // Clear backgrounds at old positions
+    ctx.fillStyle = '#D7CCC8';
+    ctx.fillRect(x1 + 1, y1 + 1, cellSize - 2, cellSize - 2);
+    ctx.fillRect(x2 + 1, y2 + 1, cellSize - 2, cellSize - 2);
+    // Draw swapped blocks at interpolated positions
+    drawBlock(px1, py1, cellSize, board[s.r1][s.c1], s.r1, s.c1);
+    drawBlock(px2, py2, cellSize, board[s.r2][s.c2], s.r2, s.c2);
+  }
+
+  // Draw elimination glow
+  if (animState.elim) {
+    const t = Math.min(1, (performance.now() - animState.elim.startTime) / animState.elim.duration);
+    for (const cell of animState.elim.cells) {
+      const cx = cell.c * cellSize + cellSize / 2;
+      const cy = cell.r * cellSize + cellSize / 2;
+      const alpha = Math.max(0, 1 - t);
+      const glowR = cellSize * 0.45 * (1 + t * 0.5);
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.7;
+      ctx.fillStyle = '#FFFBE6';
+      ctx.shadowColor = 'rgba(255,200,0,0.8)';
+      ctx.shadowBlur = cellSize * 0.25;
+      ctx.beginPath();
+      ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      drawBlock(cell.c * cellSize, cell.r * cellSize, cellSize, cell.type, cell.r, cell.c, 1 + t * 0.35);
+    }
+  }
+
+  // Highlight cells
+  if (highlightCells) {
+    for (const { r, c } of highlightCells) {
+      ctx.strokeStyle = '#FFD54F';
+      ctx.lineWidth = Math.max(2, cellSize * 0.06);
+      ctx.strokeRect(c * cellSize + 2, r * cellSize + 2, cellSize - 4, cellSize - 4);
+    }
+  }
+}
+
+// --- Particle System ---
+let particles = [];
+let animFrameId = null;
+
+function spawnParticles(cx, cy, count, color, spread, life) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * spread;
+    particles.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - spread * 0.3,
+      life: life + Math.random() * life * 0.5,
+      maxLife: life * 1.5,
+      color: color,
+      size: 1.5 + Math.random() * 3
+    });
+  }
+}
+
+function spawnElimParticles(cells, color) {
+  for (const cell of cells) {
+    const cx = cell.c * cellSize + cellSize / 2;
+    const cy = cell.r * cellSize + cellSize / 2;
+    spawnParticles(cx, cy, 8, color, cellSize * 0.12, 400);
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 0.001 * dt; // gravity
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function hexToRgb(hex) {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) }
+    : { r: 0, g: 0, b: 0 };
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const alpha = Math.max(0, p.life / p.maxLife);
+    const size = p.size * alpha;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// --- Render loop ---
+let renderBoard = null;
+let renderHighlights = null;
+
+function hasActiveAnimations() {
+  return particles.length > 0 ||
+    game.state === 'animating' ||
+    animState.swap !== null ||
+    animState.elim !== null ||
+    animState.drops !== null ||
+    Object.keys(animState.bounces).length > 0;
+}
+
+function startRenderLoop() {
+  if (animFrameId) return;
+  let lastTime = performance.now();
+
+  function loop(time) {
+    const dt = time - lastTime;
+    lastTime = time;
+
+    updateParticles(dt);
+
+    // Clean stale bounces
+    const now = performance.now();
+    for (const [key, b] of Object.entries(animState.bounces)) {
+      if (now - b.startTime > 400) delete animState.bounces[key];
+    }
+
+    // Auto-clear stale animation states
+    if (animState.elim && now - animState.elim.startTime > animState.elim.duration + 200) {
+      animState.elim = null;
+    }
+
+    if (renderBoard) {
+      drawBoard(renderBoard, renderHighlights);
+      drawParticles();
+    }
+
+    if (hasActiveAnimations()) {
+      animFrameId = requestAnimationFrame(loop);
+    } else {
+      animFrameId = null;
+      // Final render to clean up
+      if (renderBoard) {
+        drawBoard(renderBoard, renderHighlights);
+      }
+    }
+  }
+
+  animFrameId = requestAnimationFrame(loop);
+}
+
+function triggerRender(board, highlights = null) {
+  renderBoard = board;
+  renderHighlights = highlights;
+  // Draw immediately
+  drawBoard(board, highlights);
+  drawParticles();
+  // Continue loop if animations active
+  if (!animFrameId && (particles.length > 0 || game.state === 'animating')) {
+    startRenderLoop();
+  }
+}
+
+// --- Swap Animation ---
+// ============================================================
+// 8. AUDIO — Web Audio API 音效
+// ============================================================
+let audioCtx = null;
+let muted = false;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+
+function playTone(freq, duration, type = 'sine', vol = 0.1) {
+  if (muted || !audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playNoise(duration, vol = 0.05) {
+  if (muted || !audioCtx) return;
+  const bufferSize = audioCtx.sampleRate * duration;
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * vol * (1 - i / bufferSize);
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start();
+}
+
+function sfxSwap() { playTone(440, 0.08, 'sine', 0.08); setTimeout(() => playTone(520, 0.06, 'sine', 0.06), 50); }
+function sfxMatch() { playNoise(0.15, 0.06); }
+function sfxReclaim() { playTone(523, 0.12, 'sine', 0.1); setTimeout(() => playTone(659, 0.12, 'sine', 0.1), 80); setTimeout(() => playTone(784, 0.18, 'sine', 0.12), 160); }
+function sfxInvalid() { playTone(120, 0.2, 'triangle', 0.08); }
+function sfxWin() {
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.25, 'sine', 0.12), i * 120));
+}
+function sfxLose() {
+  [400, 350, 300, 200].forEach((f, i) => setTimeout(() => playTone(f, 0.3, 'triangle', 0.08), i * 150));
+}
+
+// ============================================================
+// 9. STORAGE — 持久化
+// ============================================================
+const STORAGE_KEY = 'wotu_progress';
+const STORAGE_STATS = 'wotu_stats';
+
+function saveProgress(levelNum) {
+  try { localStorage.setItem(STORAGE_KEY, String(levelNum)); } catch(e) {}
+}
+
+function loadProgress() {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    return v ? Math.min(Number(v), 3) : 1;
+  } catch(e) { return 1; }
+}
+
+function saveStats(stats) {
+  try { localStorage.setItem(STORAGE_STATS, JSON.stringify(stats)); } catch(e) {}
+}
+
+function loadStats() {
+  try {
+    const v = localStorage.getItem(STORAGE_STATS);
+    return v ? JSON.parse(v) : { totalFarmland: 0, grainSaved: 0, levelsCleared: 0 };
+  } catch(e) { return { totalFarmland: 0, grainSaved: 0, levelsCleared: 0 }; }
+}
+
+function resetProgress() {
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(STORAGE_STATS); } catch(e) {}
+}
+
+// ============================================================
+// 10. GAME CONTROLLER — 游戏状态机
+// ============================================================
+const STATE = { IDLE: 'idle', SWAPPING: 'swapping', ANIMATING: 'animating', GAME_OVER: 'game_over' };
+
+const game = {
+  levelNum: 1,
+  board: null,
+  stepsLeft: 0,
+  grainReserve: 0,
+  reclaimedCount: 0,
+  target: 0,
+  levelConfig: null,
+  state: STATE.IDLE,
+  selectedCell: null,
+  stats: loadStats(),
+
+  initLevel(levelNum) {
+    this.levelNum = levelNum;
+    this.levelConfig = LEVELS[levelNum - 1];
+    const cfg = this.levelConfig;
+
+    this.board = createBoard(cfg.size, cfg.pollutants, cfg.looseSoilInit);
+    this.stepsLeft = cfg.steps;
+    this.grainReserve = cfg.grainInit;
+    this.reclaimedCount = 0;
+    this.target = cfg.target;
+    this.state = STATE.IDLE;
+    this.selectedCell = null;
+
+    resizeCanvas(cfg.size);
+    this.render();
+    this.updateUI();
+    updateCellInfo(null);
+    document.getElementById('btn-next').style.display = 'none';
+
+    // Clear animation state
+    animState.swap = null;
+    animState.elim = null;
+    animState.drops = null;
+    animState.bounces = {};
+    clearFirstTap();
+    updateLevelSelector();
+
+    if (cfg.hasGuide) {
+      guideSystem.start();
+    }
+  },
+
+  render(highlightCells = null) {
+    triggerRender(this.board, highlightCells);
+  },
+
+  updateUI() {
+    const cfg = this.levelConfig;
+    document.getElementById('level-name').textContent = cfg.name;
+    document.getElementById('reclaim-progress').textContent = this.reclaimedCount + '/' + this.target;
+    document.getElementById('steps-left').textContent = this.stepsLeft;
+
+    // Grain bar
+    const grainPercent = Math.max(0, this.grainReserve);
+    const grainBar = document.getElementById('grain-bar-inner');
+    grainBar.style.width = grainPercent + '%';
+    document.getElementById('grain-bar-label').textContent = '粮食 ' + Math.round(grainPercent) + '%';
+
+    // Color warning when low
+    if (grainPercent <= 20) {
+      grainBar.style.background = 'linear-gradient(90deg, #E53935, #FF5252, #EF5350)';
+    } else if (grainPercent <= 40) {
+      grainBar.style.background = 'linear-gradient(90deg, #FF8F00, #FFA000, #FFB300)';
+    } else {
+      grainBar.style.background = 'linear-gradient(90deg, #F9A825, #FFD54F, #FFB300)';
+    }
+
+    // Steps warning
+    const stepsEl = document.getElementById('steps-left');
+    if (this.stepsLeft <= 3) {
+      stepsEl.style.color = '#FF5252';
+    } else if (this.stepsLeft <= 6) {
+      stepsEl.style.color = '#FFB74D';
+    } else {
+      stepsEl.style.color = '#FFD54F';
+    }
+  },
+
+  async handleSwap(r1, c1, r2, c2) {
+    if (this.state !== STATE.IDLE) return;
+    if (!isAdjacent(r1, c1, r2, c2)) return;
+
+    initAudio();
+    updateCellInfo(null);
+    this.state = STATE.SWAPPING;
+
+    // Animate swap
+    animState.swap = { r1, c1, r2, c2, startTime: performance.now(), duration: 280 };
+    startRenderLoop();
+    sfxSwap();
+
+    // Execute board swap
+    const originalBoard = cloneBoard(this.board);
+    const tmp = this.board[r1][c1];
+    this.board[r1][c1] = this.board[r2][c2];
+    this.board[r2][c2] = tmp;
+
+    // Wait for swap animation
+    await new Promise(resolve => setTimeout(resolve, 280));
+    animState.swap = null;
+
+    // Add bounce to swapped cells
+    addBounce(r1, c1, 0.7);
+    addBounce(r2, c2, 0.7);
+
+    // Check for matches
+    const { matchGroups } = findAllMatches(this.board);
+
+    if (matchGroups.length === 0) {
+      // Invalid move — revert
+      this.board = originalBoard;
+      this.stepsLeft--;
+      this.grainReserve = Math.max(0, this.grainReserve - this.levelConfig.grainPenalty);
+      sfxInvalid();
+      this.render();
+      this.updateUI();
+
+      if (this.checkLose()) return;
+      this.state = STATE.IDLE;
+      guideSystem.onInvalidMove();
+      return;
+    }
+
+    // Valid move
+    this.stepsLeft--;
+    this.render();
+    this.updateUI();
+
+    await this.processChain(matchGroups);
+  },
+
+  async processChain(matchGroups) {
+    this.state = STATE.ANIMATING;
+
+    // Collect all cells being eliminated
+    const allCells = [];
+    for (const match of matchGroups) {
+      for (const cell of match.cells) {
+        allCells.push({ r: cell.r, c: cell.c, type: this.board[cell.r][cell.c] });
+      }
+    }
+
+    // --- Elimination animation ---
+    animState.elim = { cells: allCells, startTime: performance.now(), duration: 380 };
+    startRenderLoop();
+
+    // Spawn particles during elimination
+    for (const match of matchGroups) {
+      const blockColor = BLOCK_COLORS[match.type] ? BLOCK_COLORS[match.type].fill : '#8D6E63';
+      spawnElimParticles(match.cells, blockColor);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 380));
+    animState.elim = null;
+
+    // Process matches
+    const result = processMatches(this.board, matchGroups);
+    this.board = result.board;
+    this.reclaimedCount += result.reclaimedCount;
+
+    const grainGain = result.reclaimedCount * this.levelConfig.grainGain;
+    this.grainReserve = Math.min(100, this.grainReserve + grainGain);
+
+    if (result.reclaimedCount > 0) {
+      sfxReclaim();
+      for (const match of matchGroups) {
+        if (match.type === BLOCK.LOOSE_SOIL) {
+          const cx = match.cells[1].c * cellSize + cellSize / 2;
+          const cy = match.cells[1].r * cellSize + cellSize / 2;
+          spawnParticles(cx, cy, 20, '#FFD54F', cellSize * 0.2, 700);
+        }
+      }
+    } else {
+      sfxMatch();
+    }
+
+    this.render();
+    this.updateUI();
+
+    // --- Compute gravity drops ---
+    const postGravity = applyGravity(this.board, this.levelConfig.pollutants);
+    const size = this.board.length;
+    const dropItems = [];
+
+    for (let c = 0; c < size; c++) {
+      // Find non-null cells in current board, bottom to top
+      const oldBlocks = [];
+      for (let r = size - 1; r >= 0; r--) {
+        if (this.board[r][c] !== null) {
+          oldBlocks.push({ r, type: this.board[r][c] });
+        }
+      }
+      // Find non-null cells in post-gravity board, bottom to top
+      const newBlocks = [];
+      for (let r = size - 1; r >= 0; r--) {
+        if (postGravity[r][c] !== null) {
+          newBlocks.push({ r, type: postGravity[r][c] });
+        }
+      }
+      // Map old blocks to new positions
+      for (let i = 0; i < oldBlocks.length && i < newBlocks.length; i++) {
+        if (oldBlocks[i].r !== newBlocks[i].r) {
+          dropItems.push({
+            c,
+            fromR: oldBlocks[i].r,
+            toR: newBlocks[i].r,
+            type: newBlocks[i].type
+          });
+        }
+      }
+      // New blocks from top (spawned)
+      for (let i = oldBlocks.length; i < newBlocks.length; i++) {
+        dropItems.push({
+          c,
+          fromR: -1 - (i - oldBlocks.length),
+          toR: newBlocks[i].r,
+          type: newBlocks[i].type
+        });
+      }
+    }
+
+    // --- Gravity drop animation ---
+    if (dropItems.length > 0) {
+      const dropDuration = Math.min(600, 200 + dropItems.length * 15);
+      animState.drops = { items: dropItems, startTime: performance.now(), duration: dropDuration, progress: 0 };
+
+      await animateOver(dropDuration, (t) => {
+        if (animState.drops) animState.drops.progress = t;
+        this.render(); // re-render each frame
+      });
+
+      animState.drops = null;
+
+      // Add bounce to settled cells
+      for (const d of dropItems) {
+        addBounce(d.toR, d.c, 0.5);
+        // Only bounce a few cells to avoid overwhelming
+        if (dropItems.length > 8) break;
+      }
+    }
+
+    // Update board to post-gravity state
+    this.board = postGravity;
+    this.render();
+
+    // --- Check chain ---
+    const { matchGroups: newMatches } = findAllMatches(this.board);
+
+    if (newMatches.length > 0) {
+      await this.processChain(newMatches);
+    } else {
+      if (this.checkWin()) return;
+      if (this.checkLose()) return;
+      this.state = STATE.IDLE;
+      this.render();
+      guideSystem.onIdle();
+    }
+  },
+
+  checkWin() {
+    if (this.reclaimedCount >= this.target) {
+      this.state = STATE.GAME_OVER;
+      sfxWin();
+
+      // Update stats
+      this.stats.levelsCleared = Math.max(this.stats.levelsCleared, this.levelNum);
+      this.stats.totalFarmland += this.reclaimedCount;
+      this.stats.grainSaved += Math.round(this.grainReserve);
+      saveStats(this.stats);
+
+      if (this.levelNum < 3) {
+        saveProgress(this.levelNum + 1);
+      } else {
+        // All levels cleared
+        saveProgress(3);
+        saveStats(this.stats);
+      }
+
+      setTimeout(() => showPopup('win'), 400);
+      return true;
+    }
+    return false;
+  },
+
+  checkLose() {
+    if (this.stepsLeft <= 0) {
+      this.state = STATE.GAME_OVER;
+      sfxLose();
+      setTimeout(() => showPopup('lose', '步数耗尽！土地修复的窗口期已过，请重新规划。'), 400);
+      return true;
+    }
+    if (this.grainReserve <= 0) {
+      this.state = STATE.GAME_OVER;
+      sfxLose();
+      setTimeout(() => showPopup('lose', '粮食储备归零！没有足够的粮食支撑修复工作，请重新开始。'), 400);
+      return true;
+    }
+    return false;
+  },
+
+  nextLevel() {
+    if (this.levelNum < 3) {
+      this.initLevel(this.levelNum + 1);
+    } else {
+      showSummary();
+    }
+  },
+
+  restartLevel() {
+    this.initLevel(this.levelNum);
+  },
+
+  restartAll() {
+    resetProgress();
+    this.stats = { totalFarmland: 0, grainSaved: 0, levelsCleared: 0 };
+    this.initLevel(1);
+  }
+};
+
+// ============================================================
+// 11. INPUT HANDLER — 触屏 + 鼠标输入 (click-to-swap + drag)
+// ============================================================
+let touchStartX = 0, touchStartY = 0;
+let touchStartCell = null;
+let hasDragged = false;
+let firstTapCell = null;   // For two-tap swap
+let infoClearTimer = null;
+
+function getCellFromClient(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const col = Math.floor((clientX - rect.left) * scaleX / cellSize);
+  const row = Math.floor((clientY - rect.top) * scaleY / cellSize);
+  if (row >= 0 && row < game.board.length && col >= 0 && col < game.board[0].length) {
+    return { r: row, c: col };
+  }
+  return null;
+}
+
+function updateCellInfo(cell) {
+  const infoBar = document.getElementById('cell-info');
+  const iconEl = document.getElementById('cell-info-icon');
+  const nameEl = document.getElementById('cell-info-name');
+  const descEl = document.getElementById('cell-info-desc');
+  if (!cell || !game.board[cell.r] || !game.board[cell.r][cell.c]) {
+    infoBar.classList.remove('highlight');
+    iconEl.textContent = '📦';
+    nameEl.textContent = '点击格子查看信息';
+    descEl.textContent = '';
+    return;
+  }
+  const type = game.board[cell.r][cell.c];
+  const name = BLOCK_NAMES[type] || '未知';
+  const desc = BLOCK_DESC[type] || '';
+  const icons = {
+    [BLOCK.COMPACTION]: '🪨', [BLOCK.HEAVY_METAL]: '☠️', [BLOCK.ORGANIC]: '🦠',
+    [BLOCK.DESERT]: '🏜️', [BLOCK.SALINE]: '💎', [BLOCK.LOOSE_SOIL]: '🟫',
+    [BLOCK.HEALTHY_FARM]: '🌱'
+  };
+  infoBar.classList.add('highlight');
+  iconEl.textContent = icons[type] || '📦';
+  nameEl.textContent = name;
+  descEl.textContent = desc;
+}
+
+function clearFirstTap() {
+  firstTapCell = null;
+  game.render();
+}
+
+function handlePointerDown(clientX, clientY) {
+  if (game.state !== STATE.IDLE) return;
+  initAudio();
+  const cell = getCellFromClient(clientX, clientY);
+  if (!cell) {
+    clearFirstTap();
+    updateCellInfo(null);
+    return;
+  }
+
+  touchStartX = clientX;
+  touchStartY = clientY;
+  touchStartCell = cell;
+  hasDragged = false;
+
+  // Clear info auto-hide timer
+  if (infoClearTimer) { clearTimeout(infoClearTimer); infoClearTimer = null; }
+
+  // Two-tap swap: if we already have a first tap, check adjacency
+  if (firstTapCell) {
+    if (firstTapCell.r === cell.r && firstTapCell.c === cell.c) {
+      // Same cell — deselect
+      clearFirstTap();
+      updateCellInfo(null);
+      return;
+    }
+    if (isAdjacent(firstTapCell.r, firstTapCell.c, cell.r, cell.c)) {
+      // Adjacent — swap!
+      game.handleSwap(firstTapCell.r, firstTapCell.c, cell.r, cell.c);
+      clearFirstTap();
+      updateCellInfo(null);
+      touchStartCell = null;
+      return;
+    }
+    // Non-adjacent — select new cell instead
+  }
+
+  // Select cell
+  firstTapCell = cell;
+  game.selectedCell = cell;
+  game.render([cell]);
+  updateCellInfo(cell);
+  addBounce(cell.r, cell.c, 1.0);
+
+  // Auto-clear info after 4 seconds
+  infoClearTimer = setTimeout(() => {
+    if (game.state === STATE.IDLE && firstTapCell && firstTapCell.r === cell.r && firstTapCell.c === cell.c) {
+      clearFirstTap();
+      updateCellInfo(null);
+    }
+  }, 4000);
+}
+
+function handlePointerMove(clientX, clientY) {
+  if (!touchStartCell || game.state !== STATE.IDLE) return;
+  const dx = clientX - touchStartX;
+  const dy = clientY - touchStartY;
+  const threshold = cellSize * 0.25;
+
+  if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+    hasDragged = true;
+    clearFirstTap();
+    updateCellInfo(null);
+
+    let targetCell = null;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      targetCell = { r: touchStartCell.r, c: touchStartCell.c + (dx > 0 ? 1 : -1) };
+    } else {
+      targetCell = { r: touchStartCell.r + (dy > 0 ? 1 : -1), c: touchStartCell.c };
+    }
+
+    if (targetCell && targetCell.r >= 0 && targetCell.r < game.board.length &&
+        targetCell.c >= 0 && targetCell.c < game.board[0].length) {
+      game.render([touchStartCell, targetCell]);
+      game.handleSwap(touchStartCell.r, touchStartCell.c, targetCell.r, targetCell.c);
+      touchStartCell = null;
+      game.selectedCell = null;
+    }
+  }
+}
+
+function handlePointerUp() {
+  // If it was a simple tap (no drag), keep the selection
+  if (!hasDragged && touchStartCell) {
+    game.selectedCell = null;
+    game.render(firstTapCell ? [firstTapCell] : null);
+  }
+  touchStartCell = null;
+}
+
+// Touch events
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  handlePointerDown(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  handlePointerUp();
+});
+
+// Mouse events (desktop support)
+canvas.addEventListener('mousedown', (e) => {
+  handlePointerDown(e.clientX, e.clientY);
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (touchStartCell && !hasDragged) {
+    handlePointerMove(e.clientX, e.clientY);
+  }
+});
+
+canvas.addEventListener('mouseup', (e) => {
+  handlePointerUp();
+});
+
+canvas.addEventListener('mouseleave', (e) => {
+  if (touchStartCell && !hasDragged) {
+    game.selectedCell = null;
+    game.render();
+    updateCellInfo(null);
+  }
+  touchStartCell = null;
+  clearFirstTap();
+});
+
+// Prevent context menu on long press
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ============================================================
+// 12. UI — DOM 界面控制
+// ============================================================
+function showPopup(type, message) {
+  const overlay = document.getElementById('popup-overlay');
+  const icon = document.getElementById('popup-icon');
+  const title = document.getElementById('popup-title');
+  const msg = document.getElementById('popup-message');
+  const quoteDiv = document.getElementById('popup-quote');
+  const quoteText = document.getElementById('popup-quote-text');
+  const quoteSource = document.getElementById('popup-quote-source');
+  const btn = document.getElementById('popup-btn');
+
+  overlay.classList.add('active');
+  quoteDiv.style.display = 'none';
+  btn.className = '';
+
+  if (type === 'win') {
+    icon.textContent = '🌾';
+    title.textContent = '复耕成功！';
+    msg.textContent = '你成功修复了 ' + game.reclaimedCount + ' 块健康耕地！';
+    // Show random quote
+    const quote = randChoice(QUOTES);
+    quoteDiv.style.display = 'block';
+    quoteText.textContent = quote.text;
+    quoteSource.textContent = quote.source;
+
+    btn.textContent = game.levelNum < 3 ? '▶ 下一关' : '🏆 查看总结';
+    btn.className = 'win-btn';
+    // Show bottom next button too
+    if (game.levelNum < 3) {
+      document.getElementById('btn-next').style.display = 'block';
+    }
+    btn.onclick = () => {
+      hidePopup();
+      if (game.levelNum < 3) {
+        game.nextLevel();
+      } else {
+        showSummary();
+      }
+    };
+  } else if (type === 'lose') {
+    icon.textContent = '😞';
+    title.textContent = '修复失败';
+    msg.textContent = message;
+    btn.textContent = '🔄 重新挑战';
+    btn.className = 'lose-btn';
+    btn.onclick = () => {
+      hidePopup();
+      game.restartLevel();
+    };
+  }
+}
+
+function hidePopup() {
+  document.getElementById('popup-overlay').classList.remove('active');
+}
+
+function showSummary() {
+  const summary = document.getElementById('summary-screen');
+  const stats = game.stats;
+  document.getElementById('summary-total-farmland').textContent = stats.totalFarmland;
+  document.getElementById('summary-grain-saved').textContent = stats.grainSaved;
+  document.getElementById('summary-levels-cleared').textContent = stats.levelsCleared;
+  summary.classList.add('active');
+  document.getElementById('game-container').style.display = 'none';
+}
+
+// ============================================================
+// 13. GUIDE SYSTEM — 新手引导（全面版）
+// ============================================================
+const guideSystem = {
+  stepIdx: -1,
+  completed: false,
+  firstMatchDone: false,
+  firstReclaimDone: false,
+  waitingForSwap: false,
+  timer: null,
+  backdrop: document.getElementById('guide-backdrop'),
+  tooltip: document.getElementById('guide-tooltip'),
+
+  // Tutorial steps targeting specific UI elements
+  steps: [
+    {
+      title: '关卡主题', target: 'level-name',
+      text: '这里是<strong>当前关卡名称</strong>。\n第一关「复苏之风」是入门关卡，你需要修复6块健康耕地来通关。',
+      icon: '🏷️', arrow: 'down'
+    },
+    {
+      title: '复耕进度', target: 'reclaim-progress',
+      text: '🌾 <strong>复耕进度</strong>：显示你已修复的健康耕地数量。\n当前目标：修复 <strong>6</strong> 块耕地。<br>每次消除<em>疏松土块</em>可复耕1块！',
+      icon: '🌾', arrow: 'down'
+    },
+    {
+      title: '剩余步数', target: 'steps-left',
+      text: '👣 <strong>剩余步数</strong>：本关共 <strong>30步</strong>。\n每次交换消耗1步（无论是否有效）。<br>步数用尽且未达标 → 闯关失败！',
+      icon: '👣', arrow: 'down'
+    },
+    {
+      title: '粮食储备条', target: 'grain-bar-wrapper',
+      text: '🌾 <strong>粮食储备条</strong>：当前 <strong>100%</strong>。\n· 无效移动扣减 <strong>10%</strong>\n· 成功复耕增加 <strong>15%</strong>\n· 储备归零 → 立即失败！',
+      icon: '🍞', arrow: 'up'
+    },
+    {
+      title: '农民伯伯', target: 'farmer-avatar',
+      text: '👨‍🌾 这位是<strong>农民伯伯</strong>！\n他守护着我们的粮食储备。\n粮食储备条越低，他的表情越焦急…',
+      icon: '👨‍🌾', arrow: 'up'
+    },
+    {
+      title: '方块类型介绍', target: 'board-wrapper',
+      text: '棋盘上有多种<strong>方块</strong>，点击任意方块可查看详细信息。\n\n🪨 板结块 · ☠️ 重金属 · 🦠 有机物\n🏜️ 沙化块 · 💎 盐碱晶\n🟫 疏松土块（中间形态）\n🌱 健康耕地（通关目标）',
+      icon: '🧩', arrow: 'up', isBoard: true
+    },
+    {
+      title: '消除规则', target: 'board-wrapper',
+      text: '📐 <strong>三消规则</strong>：\n· 3个相同污染物相邻→中间变疏松土块\n· 3个疏松土块相邻→中间变健康耕地！\n· 重力掉落+自动连消',
+      icon: '📐', arrow: 'up', isBoard: true
+    },
+    {
+      title: '开始操作！', target: 'board-wrapper',
+      text: '🎮 准备好了吗？<br><strong>点击或拖拽两个相邻方块</strong>来交换它们的位置吧！<br>试试看——点击一个方块选中，再点相邻方块交换！',
+      icon: '🎮', arrow: 'up', isBoard: true, isActionGuide: true
+    }
+  ],
+
+  start() {
+    if (this.completed) return;
+    this.stepIdx = -1;
+    this.firstMatchDone = false;
+    this.firstReclaimDone = false;
+    this.waitingForSwap = false;
+    // Start after a short delay
+    this.timer = setTimeout(() => this.next(), 600);
+  },
+
+  next() {
+    clearTimeout(this.timer);
+    this.stepIdx++;
+    if (this.stepIdx >= this.steps.length) {
+      this.finish();
+      return;
+    }
+    this.show(this.stepIdx);
+  },
+
+  show(idx) {
+    const step = this.steps[idx];
+    const el = document.getElementById(step.target);
+    if (!el) { this.next(); return; }
+
+    // Build tooltip HTML
+    this.tooltip.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="font-size:20px;">${step.icon}</span>
+        <strong style="font-size:14px;color:#FFD54F;">${step.title}</strong>
+      </div>
+      <div style="font-size:13px;line-height:1.7;">${step.text}</div>
+      <div class="guide-close" id="guide-next-btn">👉 知道了，继续</div>
+    `;
+
+    // Position tooltip near target element
+    this.positionNear(el, step.arrow || 'down');
+
+    // Show backdrop + tooltip
+    this.backdrop.classList.add('active');
+    this.tooltip.style.display = 'block';
+
+    // Bind next button
+    document.getElementById('guide-next-btn').addEventListener('click', () => this.next());
+
+    // For the action guide step, wait for first swap
+    if (step.isActionGuide) {
+      this.waitingForSwap = true;
+    }
+  },
+
+  positionNear(el, arrowDir) {
+    const rect = el.getBoundingClientRect();
+    const tw = this.tooltip.offsetWidth || 260;
+    const th = this.tooltip.offsetHeight || 120;
+    let left = rect.left + rect.width / 2;
+    let top;
+
+    // Clamp left to viewport
+    left = Math.max(tw / 2 + 12, Math.min(left, window.innerWidth - tw / 2 - 12));
+
+    if (arrowDir === 'down') {
+      // Tooltip above element
+      top = rect.top - th - 16;
+      this.tooltip.classList.remove('arrow-up');
+      this.tooltip.classList.add('arrow-down');
+    } else {
+      // Tooltip below element
+      top = rect.bottom + 16;
+      this.tooltip.classList.remove('arrow-down');
+      this.tooltip.classList.add('arrow-up');
+    }
+
+    // Clamp vertically
+    top = Math.max(8, Math.min(top, window.innerHeight - th - 8));
+
+    this.tooltip.style.left = left + 'px';
+    this.tooltip.style.top = top + 'px';
+    this.tooltip.style.transform = 'translateX(-50%)';
+  },
+
+  hide() {
+    this.backdrop.classList.remove('active');
+    this.tooltip.style.display = 'none';
+    this.tooltip.classList.remove('arrow-up', 'arrow-down');
+  },
+
+  finish() {
+    this.hide();
+    this.completed = true;
+    this.waitingForSwap = false;
+  },
+
+  onIdle() {
+    // Only used when waiting for swap during action guide
+  },
+
+  onInvalidMove() {
+    // No special handling
+  },
+
+  notifyMatch() {
+    if (this.completed || this.firstMatchDone) return;
+    this.firstMatchDone = true;
+    // Show celebration
+    this.hide();
+    this.tooltip.innerHTML = `
+      <div style="text-align:center;">
+        <span style="font-size:24px;">👏</span>
+        <div style="font-size:13px;line-height:1.7;margin:6px 0;">
+          <strong>真棒！</strong>污染物被清除了，<br>中间格子变成了<strong>疏松土块</strong>！<br>再消除一次疏松土块就能复耕！
+        </div>
+        <div class="guide-close" id="guide-next-btn">继续</div>
+      </div>
+    `;
+    this.positionNear(document.getElementById('board-wrapper'), 'up');
+    this.backdrop.classList.add('active');
+    this.tooltip.style.display = 'block';
+    document.getElementById('guide-next-btn').addEventListener('click', () => {
+      this.hide();
+      this.waitingForSwap = false;
+    });
+  },
+
+  notifyReclaim() {
+    if (this.completed || this.firstReclaimDone) return;
+    this.firstReclaimDone = true;
+    // Show celebration
+    this.hide();
+    this.tooltip.innerHTML = `
+      <div style="text-align:center;">
+        <span style="font-size:28px;">🌱</span>
+        <div style="font-size:13px;line-height:1.7;margin:6px 0;">
+          <strong>恭喜！</strong>你成功复耕了<strong>第一块健康耕地</strong>！<br>
+          粮食储备 +${game.levelConfig.grainGain}%<br>
+          继续努力，修复更多土地吧！
+        </div>
+        <div class="guide-close" id="guide-next-btn">💪 继续守护土地</div>
+      </div>
+    `;
+    this.positionNear(document.getElementById('board-wrapper'), 'up');
+    this.backdrop.classList.add('active');
+    this.tooltip.style.display = 'block';
+    document.getElementById('guide-next-btn').addEventListener('click', () => {
+      this.hide();
+      this.waitingForSwap = false;
+    });
+  }
+};
+
+// Dismiss guide by clicking backdrop
+document.getElementById('guide-backdrop').addEventListener('click', () => {
+  guideSystem.finish();
+});
+
+// Hook guide into game processChain
+const origProcessChain = game.processChain.bind(game);
+game.processChain = function(matchGroups) {
+  const hasLooseSoilMatch = matchGroups.some(m => m.type === BLOCK.LOOSE_SOIL);
+  const hasPollutantMatch = matchGroups.some(m => m.type !== BLOCK.LOOSE_SOIL);
+
+  if (hasPollutantMatch) guideSystem.notifyMatch();
+  if (hasLooseSoilMatch) guideSystem.notifyReclaim();
+
+  // If waiting for first swap, mark complete
+  if (guideSystem.waitingForSwap) {
+    guideSystem.hide();
+    guideSystem.waitingForSwap = false;
+  }
+
+  return origProcessChain(matchGroups);
+};
+
+// ============================================================
+// 14. LEVEL SELECTOR LOGIC
+// ============================================================
+function updateLevelSelector() {
+  const savedLevel = loadProgress();
+  const currentLevel = game.levelNum;
+  const buttons = document.querySelectorAll('.level-btn');
+
+  buttons.forEach(btn => {
+    const lv = Number(btn.dataset.level);
+    btn.classList.remove('active', 'unlocked', 'locked');
+    btn.disabled = false;
+
+    if (lv === currentLevel) {
+      btn.classList.add('active');
+      btn.textContent = lv + ' · ' + LEVELS[lv - 1].name;
+    } else if (lv <= savedLevel) {
+      btn.classList.add('unlocked');
+      btn.textContent = lv + ' · ' + LEVELS[lv - 1].name;
+    } else {
+      btn.classList.add('locked');
+      btn.textContent = '🔒 ' + lv + ' · ' + LEVELS[lv - 1].name;
+      btn.disabled = true;
+    }
+  });
+}
+
+// Level button click handlers
+document.querySelectorAll('.level-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('locked')) return;
+    const lv = Number(btn.dataset.level);
+    if (lv !== game.levelNum) {
+      initAudio();
+      game.initLevel(lv);
+      updateLevelSelector();
+    }
+  });
+});
+
+// ============================================================
+// 15. BUTTON HANDLERS
+// ============================================================
+document.getElementById('btn-restart').addEventListener('click', () => {
+  initAudio();
+  game.restartLevel();
+  updateLevelSelector();
+});
+
+document.getElementById('btn-next').addEventListener('click', () => {
+  initAudio();
+  game.nextLevel();
+  updateLevelSelector();
+});
+
+document.getElementById('btn-mute').addEventListener('click', () => {
+  muted = !muted;
+  document.getElementById('btn-mute').textContent = muted ? '🔇' : '🔊';
+});
+
+document.getElementById('btn-summary-restart').addEventListener('click', () => {
+  document.getElementById('summary-screen').classList.remove('active');
+  document.getElementById('game-container').style.display = '';
+  game.restartAll();
+  updateLevelSelector();
+});
+
+// ============================================================
+// 16. INIT
+// ============================================================
+function init() {
+  const savedLevel = loadProgress();
+  game.initLevel(savedLevel);
+  updateLevelSelector();
+
+  // Handle resize
+  window.addEventListener('resize', () => {
+    resizeCanvas(game.levelConfig.size);
+    game.render();
+  });
+
+  console.log('🌾 沃土新生 — Ready');
+  console.log('关卡:', game.levelConfig.name);
+  console.log('棋盘:', game.levelConfig.size + '×' + game.levelConfig.size);
+  console.log('目标: 复耕', game.target, '块健康耕地');
+}
+
+init();
+</script>
+</body>
+</html>
