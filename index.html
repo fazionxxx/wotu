@@ -124,6 +124,16 @@
   #bottom-bar button:active { transform: scale(0.95); }
   #btn-restart { background: #ECEFF1; color: #6D4C41; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
   #btn-next { background: linear-gradient(135deg, #66BB6A, #43A047); color: white; box-shadow: 0 3px 10px rgba(67,160,71,0.35); display: none; }
+  #btn-rules { background: rgba(255,255,255,0.25); color: #FFF8F0; border: 1px solid rgba(255,255,255,0.4); box-shadow: none; font-size: 13px; }
+  #rules-popup-box { max-height: 75vh; overflow-y: auto; text-align: left; }
+  #rules-popup-box .rule-section { margin-bottom: 14px; }
+  #rules-popup-box .rule-section h4 { font-size: 14px; color: #5D4037; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  #rules-popup-box .rule-section p { font-size: 12px; color: #6D4C41; line-height: 1.7; margin: 0; }
+  #rules-popup-box .rule-blocks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  #rules-popup-box .rule-block-tag {
+    font-size: 12px; padding: 3px 8px; border-radius: 10px;
+    background: #EFEBE9; color: #5D4037; white-space: nowrap;
+  }
   #popup-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(62,39,35,0.55); display: none;
@@ -243,6 +253,7 @@
   </div>
   <div id="bottom-bar">
     <button id="btn-restart">🔄 重玩</button>
+    <button id="btn-rules">📋 规则</button>
     <button id="btn-next">▶ 下一关</button>
   </div>
 </div>
@@ -1840,6 +1851,60 @@ function hidePopup() {
   document.getElementById('popup-overlay').classList.remove('active');
 }
 
+function showRulesPopup() {
+  const overlay = document.getElementById('popup-overlay');
+  const icon = document.getElementById('popup-icon');
+  const title = document.getElementById('popup-title');
+  const msg = document.getElementById('popup-message');
+  const quoteDiv = document.getElementById('popup-quote');
+  const btn = document.getElementById('popup-btn');
+
+  overlay.classList.add('active');
+  quoteDiv.style.display = 'none';
+  btn.className = '';
+
+  icon.textContent = '📋';
+  title.textContent = '游戏规则';
+
+  msg.innerHTML = `<div id="rules-popup-box">
+    <div class="rule-section">
+      <h4>🔄 操作方式</h4>
+      <p>点击一个方块选中，再点击相邻方块即可交换；也可以<strong>拖拽</strong>相邻方块进行交换。每次交换消耗 <strong>1步</strong>。</p>
+    </div>
+    <div class="rule-section">
+      <h4>🧩 消除规则（三消）</h4>
+      <p>3个相同的<strong>污染物</strong>横/竖相邻 → 消除！<br>
+      中间格子变为<strong>疏松土块</strong>，两边变为空格。<br>
+      3个<strong>疏松土块</strong>相邻 → 消除！<br>
+      中间格子变为<strong>🌱 健康耕地</strong>，复耕计数+1。</p>
+    </div>
+    <div class="rule-section">
+      <h4>🪨 方块类型</h4>
+      <div class="rule-blocks">
+        <span class="rule-block-tag">🪨 板结块</span>
+        <span class="rule-block-tag">☠️ 重金属污染</span>
+        <span class="rule-block-tag">🦠 有机污染物</span>
+        <span class="rule-block-tag">🏜️ 沙化块</span>
+        <span class="rule-block-tag">💎 盐碱晶</span>
+        <span class="rule-block-tag">🟫 疏松土块</span>
+        <span class="rule-block-tag">🌱 健康耕地</span>
+      </div>
+    </div>
+    <div class="rule-section">
+      <h4>🍞 粮食储备条</h4>
+      <p>无效移动扣减粮食，成功复耕增加粮食。<br>储备<strong>归零则立即失败</strong>！</p>
+    </div>
+    <div class="rule-section">
+      <h4>🏆 胜负条件</h4>
+      <p>✅ 复耕健康耕地 ≥ 关卡目标 → 胜利<br>
+      ❌ 步数用完 或 粮食归零 → 失败</p>
+    </div>
+  </div>`;
+
+  btn.textContent = '👌 知道了';
+  btn.onclick = () => hidePopup();
+}
+
 function showSummary() {
   const summary = document.getElementById('summary-screen');
   const stats = game.stats;
@@ -2172,6 +2237,10 @@ document.getElementById('btn-next').addEventListener('click', () => {
   initAudio();
   game.nextLevel();
   updateLevelSelector();
+});
+
+document.getElementById('btn-rules').addEventListener('click', () => {
+  showRulesPopup();
 });
 
 document.getElementById('btn-mute').addEventListener('click', () => {
