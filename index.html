@@ -913,39 +913,20 @@ function drawBlock(x, y, size, type, r, c, scaleOverride) {
         ctx.fillRect(cx + dx - s * 0.06, cy + dy - s * 0.06, s * 0.18, s * 0.12);
       }
       break;
-
-    case BLOCK.HEALTHY_FARM:
-      // Green sprout
-      ctx.fillStyle = '#4CAF50';
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - s * 0.5);
-      ctx.quadraticCurveTo(cx + s * 0.5, cy - s * 0.7, cx + s * 0.25, cy + s * 0.1);
-      ctx.quadraticCurveTo(cx + s * 0.1, cy + s * 0.15, cx, cy + s * 0.05);
-      ctx.quadraticCurveTo(cx - s * 0.1, cy + s * 0.15, cx - s * 0.25, cy + s * 0.1);
-      ctx.quadraticCurveTo(cx - s * 0.5, cy - s * 0.7, cx, cy - s * 0.5);
-      ctx.fill();
-      // Second smaller leaf
-      ctx.fillStyle = '#66BB6A';
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - s * 0.35);
-      ctx.quadraticCurveTo(cx + s * 0.35, cy - s * 0.5, cx + s * 0.15, cy + s * 0.2);
-      ctx.quadraticCurveTo(cx - s * 0.05, cy + s * 0.1, cx, cy - s * 0.05);
-      ctx.quadraticCurveTo(cx + s * 0.05, cy - s * 0.3, cx, cy - s * 0.35);
-      ctx.fill();
-      break;
   }
 
-  // Draw type icon (blended with pattern)
+  // Draw type icon (blended with pattern) — skip loose_soil (original pattern only)
   const icon = BLOCK_ICONS[type];
-  if (icon) {
-    const iconSize = Math.max(10, inner * 0.42);
+  if (icon && type !== BLOCK.LOOSE_SOIL) {
+    const iconSize = Math.max(12, inner * 0.55);
     ctx.font = `${iconSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     // Subtle glow behind icon for readability
     ctx.shadowColor = 'rgba(255,255,255,0.35)';
     ctx.shadowBlur = iconSize * 0.2;
-    ctx.globalAlpha = 0.65;
+    // Healthy farmland: full opacity; others: high blend
+    ctx.globalAlpha = (type === BLOCK.HEALTHY_FARM) ? 1.0 : 0.85;
     ctx.fillStyle = '#000';
     ctx.fillText(icon, cx, cy + iconSize * 0.02);
     ctx.shadowColor = 'transparent';
