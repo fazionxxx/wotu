@@ -331,16 +331,47 @@ const LEVELS = [
     looseSoilInit: [3, 4], hasGuide: true
   },
   {
-    name: '大地疗愈', size: 7, target: 12, steps: 18,
+    name: '大地疗愈', size: 7, target: 9, steps: 18,
     grainInit: 60, grainPenalty: 10, grainGain: 8,
     pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC, BLOCK.HEAVY_METAL],
-    looseSoilInit: [2, 3], hasGuide: false
+    looseSoilInit: [2, 3], hasGuide: false,
+    intro: {
+      title: '第二关 · 大地疗愈',
+      icon: '🏥',
+      text: `<div style="text-align:center;margin-bottom:8px;">
+  <span style="font-size:15px;color:#FFD54F;"><strong>🆕 新增污染物：重金属污染块</strong></span>
+</div>
+土地遭受了更复杂的<strong>化学污染</strong>，板结、沙化、有机物、重金属<strong>四重威胁并存</strong>。
+<br><br>
+📊 粮食储备仅剩 <strong style="color:#FFA726;">60%</strong>，每一步都需精打细算。
+<br>
+🎯 目标：复耕 <strong style="color:#66BB6A;">9</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>18</strong> 步
+<br><br>
+<em>准备好了吗？开始「大地疗愈」的征程！</em>`,
+      btn: '💪 接受挑战'
+    }
   },
   {
-    name: '沃野守卫', size: 8, target: 18, steps: 13,
+    name: '沃野守卫', size: 8, target: 15, steps: 23,
     grainInit: 33, grainPenalty: 10, grainGain: 3,
     pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC, BLOCK.HEAVY_METAL, BLOCK.SALINE],
-    looseSoilInit: [2, 2], hasGuide: false
+    looseSoilInit: [2, 2], hasGuide: false,
+    intro: {
+      title: '第三关 · 沃野守卫',
+      icon: '🛡️',
+      text: `<div style="text-align:center;margin-bottom:8px;">
+  <span style="font-size:15px;color:#FFD54F;"><strong>🆕 新增污染物：盐碱晶</strong></span>
+</div>
+<strong>五种土地退化类型全部登场！</strong>
+<br>板结 · 沙化 · 有机物 · 重金属 · 盐碱
+<br><br>
+📊 粮食储备仅剩 <strong style="color:#EF5350;">33%</strong>，步数极为紧张！
+<br>
+🎯 目标：复耕 <strong style="color:#66BB6A;">15</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>23</strong> 步
+<br><br>
+<em>这是最后的挑战——守护每一寸良田！</em>`,
+      btn: '⚔️ 迎接挑战'
+    }
   }
 ];
 
@@ -1261,7 +1292,9 @@ const game = {
     clearFirstTap();
     updateLevelSelector();
 
-    if (cfg.hasGuide) {
+    if (cfg.intro) {
+      showLevelIntro(cfg.intro);
+    } else if (cfg.hasGuide) {
       guideSystem.start();
     }
   },
@@ -1794,6 +1827,45 @@ function showSummary() {
   document.getElementById('summary-levels-cleared').textContent = stats.levelsCleared;
   summary.classList.add('active');
   document.getElementById('game-container').style.display = 'none';
+}
+
+// ============================================================
+// 13. LEVEL INTRO POPUP — 关卡介绍弹窗（第2、3关）
+// ============================================================
+function showLevelIntro(intro) {
+  const backdrop = document.getElementById('guide-backdrop');
+  const tooltip = document.getElementById('guide-tooltip');
+
+  tooltip.innerHTML = `
+    <div style="text-align:center;margin-bottom:4px;">
+      <span style="font-size:28px;">${intro.icon}</span>
+    </div>
+    <div style="text-align:center;margin-bottom:10px;">
+      <strong style="font-size:16px;color:#FFD54F;">${intro.title}</strong>
+    </div>
+    <div style="font-size:13px;line-height:1.85;margin-bottom:12px;">${intro.text}</div>
+    <div class="guide-close" id="level-intro-btn">${intro.btn}</div>
+  `;
+
+  // Center on screen
+  const tw = tooltip.offsetWidth || 280;
+  const th = tooltip.offsetHeight || 300;
+  const left = Math.max(tw / 2 + 12, window.innerWidth / 2);
+  const top = Math.max(40, (window.innerHeight - th) / 2);
+
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+  tooltip.style.transform = 'translateX(-50%)';
+  tooltip.classList.remove('arrow-up', 'arrow-down');
+
+  backdrop.classList.add('active');
+  tooltip.style.display = 'block';
+
+  document.getElementById('level-intro-btn').addEventListener('click', () => {
+    backdrop.classList.remove('active');
+    tooltip.style.display = 'none';
+    // For level 1, start the guide after intro (if applicable)
+  });
 }
 
 // ============================================================
