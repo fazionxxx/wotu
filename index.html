@@ -328,7 +328,23 @@ const LEVELS = [
     name: '复苏之风', size: 6, target: 6, steps: 30,
     grainInit: 100, grainPenalty: 10, grainGain: 15,
     pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC],
-    looseSoilInit: [3, 4], hasGuide: true
+    looseSoilInit: [3, 4], hasGuide: true,
+    intro: {
+      title: '第一关 · 复苏之风',
+      icon: '🌿',
+      text: `<div style="text-align:center;margin-bottom:8px;">
+  <span style="font-size:15px;color:#FFD54F;"><strong>欢迎你，土地守护者！</strong></span>
+</div>
+这片土地正遭受<strong>三种退化</strong>：
+<br>🪨 板结块 · 🏜️ 沙化块 · 🦠 有机污染物
+<br><br>
+📊 粮食储备 <strong style="color:#66BB6A;">100%</strong>，开局粮仓充足。
+<br>
+🎯 目标：复耕 <strong style="color:#66BB6A;">6</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>30</strong> 步
+<br><br>
+<em>让我们从「复苏之风」开始，唤醒沉睡的土地！</em>`,
+      btn: '🌱 开始守护'
+    }
   },
   {
     name: '大地疗愈', size: 7, target: 9, steps: 18,
@@ -1293,7 +1309,7 @@ const game = {
     updateLevelSelector();
 
     if (cfg.intro) {
-      showLevelIntro(cfg.intro);
+      showLevelIntro(cfg.intro, cfg.hasGuide ? () => guideSystem.start() : null);
     } else if (cfg.hasGuide) {
       guideSystem.start();
     }
@@ -1832,7 +1848,7 @@ function showSummary() {
 // ============================================================
 // 13. LEVEL INTRO POPUP — 关卡介绍弹窗（第2、3关）
 // ============================================================
-function showLevelIntro(intro) {
+function showLevelIntro(intro, onDismiss) {
   const backdrop = document.getElementById('guide-backdrop');
   const tooltip = document.getElementById('guide-tooltip');
 
@@ -1864,7 +1880,7 @@ function showLevelIntro(intro) {
   document.getElementById('level-intro-btn').addEventListener('click', () => {
     backdrop.classList.remove('active');
     tooltip.style.display = 'none';
-    // For level 1, start the guide after intro (if applicable)
+    if (onDismiss) onDismiss();
   });
 }
 
