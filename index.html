@@ -220,9 +220,78 @@
   #summary-screen h2 { font-size: 24px; color: #3E2723; margin-bottom: 8px; }
   .summary-stats { font-size: 15px; color: #5D4037; line-height: 2; margin-bottom: 16px; }
   .summary-stats span { font-weight: 700; color: #33691E; }
+
+  /* Start Screen */
+  #start-screen {
+    position: fixed; inset: 0; z-index: 1000;
+    background: linear-gradient(180deg, #F1E0C8 0%, #E8D5B7 30%, #D7CCC8 100%);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; padding: 24px;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+  }
+  #start-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  #start-screen .start-card {
+    background: rgba(255,255,255,0.85);
+    border-radius: 20px; padding: 32px 24px;
+    max-width: 380px; width: 100%;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(62,39,35,0.25);
+    animation: startFadeIn 0.8s ease;
+  }
+  @keyframes startFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  #start-screen .start-icon { font-size: 56px; margin-bottom: 8px; }
+  #start-screen h1 {
+    font-size: 28px; color: #3E2723; font-weight: 800;
+    letter-spacing: 2px; margin-bottom: 4px;
+  }
+  #start-screen .start-subtitle {
+    font-size: 13px; color: #8D6E63; margin-bottom: 20px;
+    letter-spacing: 1px;
+  }
+  #start-screen .start-divider {
+    width: 48px; height: 3px; background: #FFA000;
+    border-radius: 2px; margin: 0 auto 16px;
+  }
+  #start-screen .start-intro {
+    font-size: 14px; color: #5D4037; line-height: 1.8;
+    text-align: left; margin-bottom: 24px;
+  }
+  #start-screen .start-intro .highlight {
+    color: #33691E; font-weight: 600;
+  }
+  #btn-start-game {
+    background: linear-gradient(135deg, #66BB6A, #43A047);
+    color: #fff; border: none; border-radius: 24px;
+    padding: 12px 48px; font-size: 16px; font-weight: 700;
+    cursor: pointer; letter-spacing: 1px;
+    box-shadow: 0 4px 12px rgba(67,160,71,0.4);
+    transition: transform 0.15s, box-shadow 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #btn-start-game:active { transform: scale(0.95); box-shadow: 0 2px 6px rgba(67,160,71,0.3); }
 </style>
 </head>
 <body>
+
+<div id="start-screen">
+  <div class="start-card">
+    <div class="start-icon">🌍🌾</div>
+    <h1>沃土新生</h1>
+    <div class="start-subtitle">2026年全国土地日</div>
+    <div class="start-divider"></div>
+    <div class="start-intro">
+      欢迎来到<span class="highlight">「沃土新生」</span>——一款以土地修复为主题的三消游戏。
+      <br><br>
+      在这里，你将扮演<span class="highlight">土地守护者</span>，脚下的土地因不合理利用出现了板结、盐碱、污染、沙化等退化问题。通过三消的方式逐步改良土质、修复耕地，在有限步数与粮食储备的约束下完成土地复耕任务。
+      <br><br>
+      <strong>每一块复耕完成的良田</strong>，都是助力守护耕地红线、促进土地高质量发展的具象体现。让我们珍惜每一寸土地，共同守护中华民族永续发展的根基。
+    </div>
+    <button id="btn-start-game">🌱 开始守护</button>
+  </div>
+</div>
 
 <button id="btn-mute" aria-label="音效开关">🔊</button>
 
@@ -385,7 +454,7 @@ const LEVELS = [
     }
   },
   {
-    name: '沃野守卫', size: 8, target: 15, steps: 23,
+    name: '沃野守卫', size: 8, target: 13, steps: 55,
     grainInit: 33, grainPenalty: 10, grainGain: 3,
     pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC, BLOCK.HEAVY_METAL, BLOCK.SALINE],
     looseSoilInit: [2, 2], hasGuide: false,
@@ -398,9 +467,9 @@ const LEVELS = [
 <strong>五种土地退化类型全部登场！</strong>
 <br>板结 · 沙化 · 有机物 · 重金属 · 盐碱
 <br><br>
-📊 粮食储备仅剩 <strong style="color:#EF5350;">33%</strong>，步数极为紧张！
+📊 粮食储备仅剩 <strong style="color:#EF5350;">33%</strong>，但步数充足，仔细规划每一次操作！
 <br>
-🎯 目标：复耕 <strong style="color:#66BB6A;">15</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>23</strong> 步
+🎯 目标：复耕 <strong style="color:#66BB6A;">13</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>55</strong> 步
 <br><br>
 <em>这是最后的挑战——守护每一寸良田！</em>`,
       btn: '⚔️ 迎接挑战'
@@ -2258,7 +2327,10 @@ document.getElementById('btn-summary-restart').addEventListener('click', () => {
 // ============================================================
 // 16. INIT
 // ============================================================
-function init() {
+function startGame() {
+  const startScreen = document.getElementById('start-screen');
+  startScreen.classList.add('hidden');
+
   const savedLevel = loadProgress();
   game.initLevel(savedLevel);
   updateLevelSelector();
@@ -2273,6 +2345,10 @@ function init() {
   console.log('关卡:', game.levelConfig.name);
   console.log('棋盘:', game.levelConfig.size + '×' + game.levelConfig.size);
   console.log('目标: 复耕', game.target, '块健康耕地');
+}
+
+function init() {
+  document.getElementById('btn-start-game').addEventListener('click', startGame);
 }
 
 init();
