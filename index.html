@@ -2630,7 +2630,7 @@ const tutorialSystem = {
       self.waitingForSwap = false;
       guideSystem.hide();
       guideSystem.completed = true;
-      startRenderLoop();
+      game.render();
     });
   },
 
@@ -2673,6 +2673,7 @@ const tutorialSystem = {
         // Move to phase B — use current game.board which is the final post-chain state
         this.phase = 'loose_soil';
         this.targetCells = [];
+        game.render();
         setTimeout(() => this.startPhase(game.board), 500);
       });
     } else if (this.phase === 'loose_soil') {
@@ -2690,6 +2691,7 @@ const tutorialSystem = {
         this.phase = 'done';
         this.targetCells = [];
         guideSystem.completed = true;
+        game.render();
       });
     }
   },
