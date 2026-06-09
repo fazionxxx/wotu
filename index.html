@@ -2476,6 +2476,94 @@ function isSameSwap(cells, r1, c1, r2, c2) {
   return ids === swapIds;
 }
 
+// Seed loose_soil blocks to guarantee a valid tutorial swap for Phase B
+function seedLooseSoilSwap(board) {
+  const size = board.length;
+  // Pattern: place L at (r, c+1), (r+1, c), (r+1, c+2)
+  // Swapping (r, c+1) with (r+1, c+1) creates row r+1: L L L → 3-match
+  for (let r = 0; r < size - 1; r++) {
+    for (let c = 0; c < size - 2; c++) {
+      // Check this area isn't already full of matching patterns
+      board[r][c + 1] = BLOCK.LOOSE_SOIL;
+      board[r + 1][c] = BLOCK.LOOSE_SOIL;
+      board[r + 1][c + 2] = BLOCK.LOOSE_SOIL;
+      // Ensure the swap target is NOT loose_soil (needs to actually swap different blocks)
+      if (board[r + 1][c + 1] === BLOCK.LOOSE_SOIL) {
+        board[r + 1][c + 1] = BLOCK.ORGANIC;
+      }
+      // Clear any pre-existing matches this might have created
+      const { matchGroups } = findAllMatches(board);
+      if (matchGroups.length > 0) {
+        // Replace matched cells with random pollutants to break the match
+        const cfg = game.levelConfig;
+        for (const mg of matchGroups) {
+          for (const cell of mg.cells) {
+            if (board[cell.r][cell.c] === BLOCK.LOOSE_SOIL) {
+              board[cell.r][cell.c] = cfg.pollutants[Math.floor(Math.random() * cfg.pollutants.length)];
+            }
+          }
+        }
+      }
+      return;
+    }
+  }
+}
+
+// Position tooltip to avoid covering highlighted cells
+function positionTutorialTooltip(targetCells) {
+  const tooltip = document.getElementById('guide-tooltip');
+  const boardWrapper = document.getElementById('board-wrapper');
+  const boardRect = boardWrapper.getBoundingClientRect();
+  const canvasEl = document.getElementById('game-canvas');
+  const canvasRect = canvasEl.getBoundingClientRect();
+
+  // Calculate screen positions of the two highlighted cells
+  const cellPositions = targetCells.map(function(cell) {
+    return {
+      x: canvasRect.left + cell.c * cellSize + cellSize / 2,
+      y: canvasRect.top + cell.r * cellSize + cellSize / 2
+    };
+  });
+
+  // Average position of highlighted cells
+  const avgY = (cellPositions[0].y + cellPositions[1].y) / 2;
+  const avgX = (cellPositions[0].x + cellPositions[1].x) / 2;
+
+  // Determine if cells are in top or bottom half of board
+  const boardMidY = boardRect.top + boardRect.height / 2;
+  const cellsInBottomHalf = avgY > boardMidY;
+
+  const tw = tooltip.offsetWidth || 260;
+  const th = tooltip.offsetHeight || 130;
+  const topBar = document.getElementById('top-bar');
+  const bottomBar = document.getElementById('bottom-bar');
+  const topBarBottom = topBar ? topBar.getBoundingClientRect().bottom : 0;
+  const bottomBarTop = bottomBar ? bottomBar.getBoundingClientRect().top : window.innerHeight;
+
+  // Position horizontally centered on the highlight cells
+  let left = avgX;
+  left = Math.max(tw / 2 + 8, Math.min(left, window.innerWidth - tw / 2 - 8));
+
+  let top;
+  if (cellsInBottomHalf) {
+    // Highlighted cells in bottom half → place tooltip ABOVE the board
+    top = boardRect.top - th - 10;
+    tooltip.classList.remove('arrow-up');
+    tooltip.classList.add('arrow-down');
+  } else {
+    // Highlighted cells in top half → place tooltip BELOW the board
+    top = boardRect.bottom + 10;
+    tooltip.classList.remove('arrow-down');
+    tooltip.classList.add('arrow-up');
+  }
+
+  // Clamp to safe area
+  top = Math.max(topBarBottom + 4, Math.min(top, bottomBarTop - th - 4));
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
+  tooltip.style.transform = 'translateX(-50%)';
+}
+
 const tutorialSystem = {
   phase: 'done',        // 'pollutant' | 'loose_soil' | 'done'
   targetCells: [],      // [{r, c}, {r, c}]
@@ -2489,8 +2577,18 @@ const tutorialSystem = {
   },
 
   startPhase(board) {
+    // Reset cascade guard for each phase
+    this._chainFired = false;
+
     const matchType = this.phase === 'pollutant' ? 'pollutant' : 'loose_soil';
-    const swap = findSwapForMatch(board, matchType);
+    let swap = findSwapForMatch(board, matchType);
+
+    // For loose_soil phase, seed the board if no valid swap exists
+    if (!swap && this.phase === 'loose_soil') {
+      seedLooseSoilSwap(board);
+      swap = findSwapForMatch(board, matchType);
+    }
+
     if (!swap) {
       // No valid tutorial swap found — skip tutorial
       this.phase = 'done';
@@ -2501,26 +2599,39 @@ const tutorialSystem = {
     this.waitingForSwap = true;
 
     const tooltip = document.getElementById('guide-tooltip');
-    const backdrop = document.getElementById('guide-backdrop');
 
     let html;
     if (this.phase === 'pollutant') {
       html = '<div style="text-align:center;">' +
         '<span style="font-size:28px;">👆</span>' +
         '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
-        '<strong>试试看！</strong><br>拖动这两个<strong style="color:#FFD54F;">高亮闪烁</strong>的方块互换<br>来消除污染物！</div></div>';
+        '<strong>试试看！</strong><br>拖动这两个<strong style="color:#FFD54F;">高亮闪烁</strong>的方块互换<br>来消除污染物！</div>' +
+        '<div class="guide-close" id="tutorial-skip-btn" style="margin-top:6px;opacity:0.6;font-size:10px;">跳过教程 →</div></div>';
     } else {
       html = '<div style="text-align:center;">' +
         '<span style="font-size:28px;">🌱</span>' +
         '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
-        '<strong>最后一步！</strong><br>交换这两个<strong style="color:#FFD54F;">疏松土块</strong><br>复耕第一块健康耕地！</div></div>';
+        '<strong>最后一步！</strong><br>交换这两个<strong style="color:#FFD54F;">疏松土块</strong><br>复耕第一块健康耕地！</div>' +
+        '<div class="guide-close" id="tutorial-skip-btn" style="margin-top:6px;opacity:0.6;font-size:10px;">跳过教程 →</div></div>';
     }
 
     tooltip.innerHTML = html;
-    guideSystem.positionNear(document.getElementById('board-wrapper'), 'up', true);
+    // Position tooltip away from highlighted cells
+    positionTutorialTooltip(this.targetCells);
     // Don't activate backdrop during interactive swap phases — it blocks touch events on canvas
     tooltip.style.display = 'block';
     startRenderLoop();
+
+    // Skip button handler
+    var self = this;
+    document.getElementById('tutorial-skip-btn').addEventListener('click', function() {
+      self.phase = 'done';
+      self.targetCells = [];
+      self.waitingForSwap = false;
+      guideSystem.hide();
+      guideSystem.completed = true;
+      startRenderLoop();
+    });
   },
 
   onSwap(r1, c1, r2, c2) {
@@ -2540,6 +2651,9 @@ const tutorialSystem = {
 
   onChainComplete(board) {
     if (this.phase === 'done') return;
+    // Guard against multiple cascade calls — only handle first chain completion
+    if (this._chainFired) return;
+    this._chainFired = true;
 
     const tooltip = document.getElementById('guide-tooltip');
     const backdrop = document.getElementById('guide-backdrop');
@@ -2556,10 +2670,10 @@ const tutorialSystem = {
       tooltip.style.display = 'block';
       document.getElementById('tutorial-next-btn').addEventListener('click', () => {
         guideSystem.hide();
-        // Move to phase B
+        // Move to phase B — use current game.board which is the final post-chain state
         this.phase = 'loose_soil';
         this.targetCells = [];
-        setTimeout(() => this.startPhase(board), 500);
+        setTimeout(() => this.startPhase(game.board), 500);
       });
     } else if (this.phase === 'loose_soil') {
       // Final success
