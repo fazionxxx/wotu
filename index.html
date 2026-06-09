@@ -2518,7 +2518,7 @@ const tutorialSystem = {
 
     tooltip.innerHTML = html;
     guideSystem.positionNear(document.getElementById('board-wrapper'), 'up', true);
-    backdrop.classList.add('active');
+    // Don't activate backdrop during interactive swap phases — it blocks touch events on canvas
     tooltip.style.display = 'block';
     startRenderLoop();
   },
