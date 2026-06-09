@@ -197,6 +197,13 @@
     border-top: 8px solid rgba(62,39,35,0.93);
     border-bottom: none;
   }
+  @keyframes tutorialShake {
+    0%, 100% { transform: translateX(-50%); }
+    20% { transform: translateX(calc(-50% - 6px)); }
+    40% { transform: translateX(calc(-50% + 6px)); }
+    60% { transform: translateX(calc(-50% - 4px)); }
+    80% { transform: translateX(calc(-50% + 4px)); }
+  }
   #guide-backdrop {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.35); z-index: 75; display: none;
@@ -1141,6 +1148,11 @@ function drawBoard(board, highlightCells = null) {
       ctx.strokeRect(c * cellSize + 2, r * cellSize + 2, cellSize - 4, cellSize - 4);
     }
   }
+
+  // Tutorial highlight overlay
+  if (typeof tutorialSystem !== 'undefined') {
+    tutorialSystem.renderHighlights(ctx);
+  }
 }
 
 // --- Particle System ---
@@ -1439,6 +1451,23 @@ const game = {
   async handleSwap(r1, c1, r2, c2) {
     if (this.state !== STATE.IDLE) return;
     if (!isAdjacent(r1, c1, r2, c2)) return;
+
+    // Tutorial check: if tutorial is active, verify this is the correct swap
+    if (typeof tutorialSystem !== 'undefined' && tutorialSystem.waitingForSwap) {
+      if (!isSameSwap(tutorialSystem.targetCells, r1, c1, r2, c2)) {
+        // Wrong swap — block it, show hint shake
+        const tooltip = document.getElementById('guide-tooltip');
+        if (tooltip) {
+          tooltip.style.animation = 'none';
+          tooltip.offsetHeight;
+          tooltip.style.animation = 'tutorialShake 0.4s ease';
+        }
+        return;
+      }
+      tutorialSystem.waitingForSwap = false;
+      document.getElementById('guide-backdrop').classList.remove('active');
+      document.getElementById('guide-tooltip').style.display = 'none';
+    }
 
     initAudio();
     updateCellInfo(null);
@@ -2026,6 +2055,145 @@ function showLevelIntro(intro, onDismiss) {
 // ============================================================
 // 13. GUIDE SYSTEM — 新手引导（全面版）
 // ============================================================
+// ============================================================
+// 13a. Block Preview Helper — Canvas 方块缩略图
+// ============================================================
+function renderBlockPreviews(container, types, highlightType) {
+  const previewSize = 44;
+  const gap = 8;
+  const totalW = types.length * previewSize + (types.length - 1) * gap;
+  container.innerHTML = '<canvas width="' + totalW + '" height="' + (previewSize + 22) + '" style="display:block;margin:0 auto;"></canvas>';
+  const cvs = container.querySelector('canvas');
+  if (!cvs) return;
+  const pctx = cvs.getContext('2d');
+  types.forEach(function(t, i) {
+    var x = i * (previewSize + gap);
+    drawBlockPreview(pctx, x, 0, previewSize, t.type);
+    pctx.fillStyle = t.type === highlightType ? '#FFD54F' : '#FFF8F0';
+    pctx.font = 'bold 10px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+    pctx.textAlign = 'center';
+    pctx.fillText(t.label, x + previewSize / 2, previewSize + 14);
+    if (t.type === highlightType) {
+      pctx.strokeStyle = '#FFD54F';
+      pctx.lineWidth = 2;
+      pctx.setLineDash([3, 2]);
+      pctx.strokeRect(x - 1, -1, previewSize + 2, previewSize + 2);
+      pctx.setLineDash([]);
+      pctx.fillStyle = '#FF6F00';
+      pctx.font = 'bold 8px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
+      pctx.fillText('NEW', x + previewSize / 2, -4);
+    }
+  });
+}
+
+function drawBlockPreview(pctx, x, y, size, type) {
+  var ctx = pctx;
+  var colors = BLOCK_COLORS[type];
+  if (!colors) return;
+  var pad = Math.max(1, Math.floor(size * 0.08));
+  var inner = size - pad * 2;
+  var cx = x + size / 2, cy = y + size / 2;
+  var s = inner * 0.45;
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(0,0,0,0.2)';
+  ctx.shadowBlur = size * 0.05;
+  ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
+
+  roundRectCtx(ctx, x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
+  ctx.fillStyle = colors.fill;
+  ctx.fill();
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+
+  var hlGrad = ctx.createLinearGradient(x + pad, y + pad, x + pad + inner, y + pad + inner);
+  hlGrad.addColorStop(0, colors.light);
+  hlGrad.addColorStop(0.5, colors.fill);
+  hlGrad.addColorStop(1, colors.stroke);
+  roundRectCtx(ctx, x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
+  ctx.fillStyle = hlGrad;
+  ctx.fill();
+
+  roundRectCtx(ctx, x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
+  ctx.strokeStyle = colors.stroke;
+  ctx.lineWidth = Math.max(1, size * 0.03);
+  ctx.stroke();
+
+  switch (type) {
+    case BLOCK.COMPACTION:
+      ctx.strokeStyle = 'rgba(62,39,35,0.5)'; ctx.lineWidth = Math.max(0.8, size * 0.02);
+      ctx.beginPath(); ctx.moveTo(cx - s*0.6, cy - s*0.7); ctx.lineTo(cx + s*0.1, cy - s*0.1); ctx.lineTo(cx + s*0.5, cy + s*0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - s*0.4, cy + s*0.5); ctx.lineTo(cx + s*0.2, cy); ctx.lineTo(cx + s*0.7, cy - s*0.4); ctx.stroke();
+      break;
+    case BLOCK.HEAVY_METAL:
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.beginPath(); ctx.arc(cx - s*0.3, cy - s*0.2, s*0.25, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s*0.35, cy - s*0.4, s*0.18, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx - s*0.1, cy + s*0.4, s*0.22, 0, Math.PI*2); ctx.fill();
+      break;
+    case BLOCK.ORGANIC:
+      ctx.fillStyle = 'rgba(27,94,32,0.5)';
+      ctx.beginPath(); ctx.arc(cx - s*0.35, cy - s*0.3, s*0.28, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx + s*0.3, cy + s*0.3, s*0.32, 0, Math.PI*2); ctx.fill();
+      break;
+    case BLOCK.DESERT:
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      for (var i = 0; i < 6; i++) {
+        var dx = ((i*17%13)/13 - 0.5) * s * 1.5;
+        var dy = ((i*31%17)/17 - 0.5) * s * 1.5;
+        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, s*0.08, 0, Math.PI*2); ctx.fill();
+      }
+      break;
+    case BLOCK.SALINE:
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = Math.max(0.8, size * 0.02);
+      ctx.beginPath(); ctx.moveTo(cx, cy - s*0.8); ctx.lineTo(cx + s*0.7, cy); ctx.lineTo(cx, cy + s*0.8); ctx.lineTo(cx - s*0.7, cy); ctx.closePath(); ctx.stroke();
+      break;
+    case BLOCK.LOOSE_SOIL:
+      ctx.fillStyle = 'rgba(139,119,101,0.4)';
+      for (var i = 0; i < 5; i++) {
+        var dx = ((i*23%11)/11 - 0.5) * s * 1.2;
+        var dy = ((i*37%19)/19 - 0.5) * s * 1.2;
+        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, s*0.1, 0, Math.PI*2); ctx.fill();
+      }
+      break;
+    case BLOCK.HEALTHY_FARM:
+      ctx.fillStyle = 'rgba(93,64,55,0.35)';
+      ctx.beginPath(); ctx.arc(cx, cy + s*0.25, s*0.55, 0, Math.PI*2); ctx.fill();
+      var iconSize = Math.max(16, size*0.5);
+      ctx.font = iconSize + 'px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#000'; ctx.fillText('\u{1F331}', cx, cy + size*0.02);
+      break;
+  }
+
+  var icon = BLOCK_ICONS[type];
+  if (icon && type !== BLOCK.LOOSE_SOIL && type !== BLOCK.HEALTHY_FARM) {
+    var iconSz = Math.max(10, size * 0.4);
+    ctx.font = iconSz + 'px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = '#000';
+    ctx.fillText(icon, cx, cy + iconSz * 0.02);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+function roundRectCtx(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+// ============================================================
+// 13b. GUIDE SYSTEM — 新手引导（增强版）
+// ============================================================
 const guideSystem = {
   stepIdx: -1,
   completed: false,
@@ -2036,49 +2204,95 @@ const guideSystem = {
   backdrop: document.getElementById('guide-backdrop'),
   tooltip: document.getElementById('guide-tooltip'),
 
-  // Tutorial steps targeting specific UI elements
-  steps: [
-    {
-      title: '关卡主题', target: 'level-name',
-      text: '这里是<strong>当前关卡名称</strong>。\n第一关「复苏之风」是入门关卡，你需要修复6块健康耕地来通关。',
-      icon: '🏷️', arrow: 'down'
-    },
-    {
-      title: '复耕进度', target: 'reclaim-progress',
-      text: '🌾 <strong>复耕进度</strong>：显示你已修复的健康耕地数量。\n当前目标：修复 <strong>6</strong> 块耕地。<br>每次消除<em>疏松土块</em>可复耕1块！',
-      icon: '🌾', arrow: 'down'
-    },
-    {
-      title: '剩余步数', target: 'steps-left',
-      text: '👣 <strong>剩余步数</strong>：本关共 <strong>30步</strong>。\n每次交换消耗1步（无论是否有效）。<br>步数用尽且未达标 → 闯关失败！',
-      icon: '👣', arrow: 'down'
-    },
-    {
-      title: '粮食储备条', target: 'grain-bar-wrapper',
-      text: '🌾 <strong>粮食储备条</strong>：当前 <strong>100%</strong>。\n· 无效移动扣减 <strong>10%</strong>\n· 成功复耕增加 <strong>15%</strong>\n· 储备归零 → 立即失败！',
-      icon: '🍞', arrow: 'up'
-    },
-    {
-      title: '农民伯伯', target: 'farmer-avatar',
-      text: '👨‍🌾 这位是<strong>农民伯伯</strong>！\n他守护着我们的粮食储备。\n粮食储备条越低，他的表情越焦急…',
-      icon: '👨‍🌾', arrow: 'up'
-    },
-    {
-      title: '方块类型介绍', target: 'board-wrapper',
-      text: '棋盘上有多种<strong>方块</strong>，点击任意方块可查看详细信息。\n\n🪨 板结块 · ☠️ 重金属 · 🦠 有机物\n🏜️ 沙化块 · 💎 盐碱晶\n🟫 疏松土块（中间形态）\n🌱 健康耕地（通关目标）',
-      icon: '🧩', arrow: 'up', isBoard: true
-    },
-    {
-      title: '消除规则', target: 'board-wrapper',
-      text: '📐 <strong>三消规则</strong>：\n· 3个相同污染物相邻→中间变疏松土块\n· 3个疏松土块相邻→中间变健康耕地！\n· 重力掉落+自动连消',
-      icon: '📐', arrow: 'up', isBoard: true
-    },
-    {
-      title: '开始操作！', target: 'board-wrapper',
-      text: '🎮 准备好了吗？<br><strong>点击或拖拽两个相邻方块</strong>来交换它们的位置吧！<br>试试看——点击一个方块选中，再点相邻方块交换！',
-      icon: '🎮', arrow: 'up', isBoard: true, isActionGuide: true
+  // Build steps dynamically based on current level
+  buildSteps() {
+    const cfg = game.levelConfig;
+    const lv = game.levelNum;
+    const levelName = cfg.name;
+    const target = cfg.target;
+    const stepsCount = cfg.steps;
+    const grainInit = cfg.grainInit;
+    const grainGain = cfg.grainGain;
+    const grainPenalty = cfg.grainPenalty;
+
+    let blockIntroTypes, blockIntroText, blockIntroTitle, highlightType;
+    if (lv === 1) {
+      highlightType = null;
+      blockIntroTitle = '方块类型介绍';
+      blockIntroTypes = [
+        { type: BLOCK.COMPACTION, label: '板结块' },
+        { type: BLOCK.DESERT, label: '沙化块' },
+        { type: BLOCK.ORGANIC, label: '有机物' },
+        { type: BLOCK.LOOSE_SOIL, label: '疏松土块' },
+        { type: BLOCK.HEALTHY_FARM, label: '健康耕地' }
+      ];
+      blockIntroText = '本关含<strong>3种污染物</strong>：板结块、沙化块、有机污染物。<br>消除污染物产生<strong>疏松土块</strong>，再消除疏松土块即可复耕为<strong>健康耕地</strong> 🌱';
+    } else if (lv === 2) {
+      highlightType = BLOCK.HEAVY_METAL;
+      blockIntroTitle = '方块类型介绍 · 新增重金属';
+      blockIntroTypes = [
+        { type: BLOCK.COMPACTION, label: '板结块' },
+        { type: BLOCK.DESERT, label: '沙化块' },
+        { type: BLOCK.ORGANIC, label: '有机物' },
+        { type: BLOCK.HEAVY_METAL, label: '重金属' },
+        { type: BLOCK.LOOSE_SOIL, label: '疏松土块' },
+        { type: BLOCK.HEALTHY_FARM, label: '健康耕地' }
+      ];
+      blockIntroText = '🆕 <strong style="color:#FFD54F;">新增：重金属污染块！</strong><br>紫色毒液纹理，需与其他污染物一样通过三消清除。<br>四重威胁并存，土地修复需要更科学的规划。';
+    } else {
+      highlightType = BLOCK.SALINE;
+      blockIntroTitle = '方块类型介绍 · 新增盐碱晶';
+      blockIntroTypes = [
+        { type: BLOCK.COMPACTION, label: '板结块' },
+        { type: BLOCK.DESERT, label: '沙化块' },
+        { type: BLOCK.ORGANIC, label: '有机物' },
+        { type: BLOCK.HEAVY_METAL, label: '重金属' },
+        { type: BLOCK.SALINE, label: '盐碱晶' },
+        { type: BLOCK.LOOSE_SOIL, label: '疏松土块' },
+        { type: BLOCK.HEALTHY_FARM, label: '健康耕地' }
+      ];
+      blockIntroText = '🆕 <strong style="color:#FFD54F;">新增：盐碱晶！</strong><br>白色冰晶纹理，五种退化全部登场。<br>这是最终的考验——守护每一寸良田！';
     }
-  ],
+
+    return [
+      {
+        title: '关卡主题', target: 'level-name',
+        text: '这里是<strong>当前关卡名称</strong>。<br>本关「' + levelName + '」需要修复<strong>' + target + '</strong>块健康耕地来通关。',
+        icon: '🏷️', arrow: 'down'
+      },
+      {
+        title: '复耕进度', target: 'reclaim-progress',
+        text: '🌾 <strong>复耕进度</strong>：显示你已修复的健康耕地数量。<br>当前目标：修复 <strong>' + target + '</strong> 块耕地。<br>每次消除<em>疏松土块</em>可复耕1块！',
+        icon: '🌾', arrow: 'down'
+      },
+      {
+        title: '剩余步数', target: 'steps-left',
+        text: '👣 <strong>剩余步数</strong>：本关共 <strong>' + stepsCount + '步</strong>。<br>每次交换消耗1步（无论是否有效）。<br>步数用尽且未达标 → 闯关失败！',
+        icon: '👣', arrow: 'down'
+      },
+      {
+        title: '粮食储备条', target: 'grain-bar-wrapper',
+        text: '🌾 <strong>粮食储备条</strong>：当前 <strong>' + grainInit + '%</strong>。<br>· 无效移动扣减 <strong>' + grainPenalty + '%</strong><br>· 成功复耕增加 <strong>' + grainGain + '%</strong><br>· 储备归零 → 立即失败！',
+        icon: '🍞', arrow: 'up'
+      },
+      {
+        title: '农民伯伯', target: 'farmer-avatar',
+        text: '👨‍🌾 这位是<strong>农民伯伯</strong>！\n他守护着我们的粮食储备。\n粮食储备条越低，他的表情越焦急…',
+        icon: '👨‍🌾', arrow: 'up'
+      },
+      {
+        title: blockIntroTitle, target: 'board-wrapper',
+        text: blockIntroText,
+        icon: '🧩', arrow: 'up', isBoard: true, isBlockIntro: true,
+        blockTypes: blockIntroTypes, highlightType: highlightType
+      },
+      {
+        title: '消除规则', target: 'board-wrapper',
+        text: '📐 <strong>三消规则</strong>：<br>· 3个相同污染物相邻→中间变疏松土块<br>· 3个疏松土块相邻→中间变健康耕地！<br>· 重力掉落+自动连消',
+        icon: '📐', arrow: 'up', isBoard: true
+      }
+    ];
+  },
 
   start() {
     if (this.completed) return;
@@ -2086,7 +2300,7 @@ const guideSystem = {
     this.firstMatchDone = false;
     this.firstReclaimDone = false;
     this.waitingForSwap = false;
-    // Start after a short delay
+    this.steps = this.buildSteps();
     this.timer = setTimeout(() => this.next(), 600);
   },
 
@@ -2105,57 +2319,67 @@ const guideSystem = {
     const el = document.getElementById(step.target);
     if (!el) { this.next(); return; }
 
-    // Build tooltip HTML
-    this.tooltip.innerHTML = `
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-        <span style="font-size:20px;">${step.icon}</span>
-        <strong style="font-size:14px;color:#FFD54F;">${step.title}</strong>
-      </div>
-      <div style="font-size:13px;line-height:1.7;">${step.text}</div>
-      <div class="guide-close" id="guide-next-btn">👉 知道了，继续</div>
-    `;
+    let innerHTML = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
+      '<span style="font-size:20px;">' + step.icon + '</span>' +
+      '<strong style="font-size:14px;color:#FFD54F;">' + step.title + '</strong></div>' +
+      '<div style="font-size:13px;line-height:1.7;">' + step.text + '</div>';
 
-    // Position tooltip near target element
-    this.positionNear(el, step.arrow || 'down');
+    if (step.isBlockIntro && step.blockTypes) {
+      innerHTML += '<div id="block-preview-container" style="margin-top:10px;"></div>';
+    }
 
-    // Show backdrop + tooltip
+    innerHTML += '<div class="guide-close" id="guide-next-btn">👉 知道了，继续</div>';
+    this.tooltip.innerHTML = innerHTML;
+
+    if (step.isBlockIntro && step.blockTypes) {
+      const container = document.getElementById('block-preview-container');
+      if (container) {
+        renderBlockPreviews(container, step.blockTypes, step.highlightType);
+      }
+      this.tooltip.style.maxWidth = '340px';
+    } else {
+      this.tooltip.style.maxWidth = '260px';
+    }
+
+    this.positionNear(el, step.arrow || 'down', step.isBoard);
     this.backdrop.classList.add('active');
     this.tooltip.style.display = 'block';
 
-    // Bind next button
     document.getElementById('guide-next-btn').addEventListener('click', () => this.next());
 
-    // For the action guide step, wait for first swap
     if (step.isActionGuide) {
       this.waitingForSwap = true;
     }
   },
 
-  positionNear(el, arrowDir) {
+  positionNear(el, arrowDir, isBoard) {
     const rect = el.getBoundingClientRect();
     const tw = this.tooltip.offsetWidth || 260;
     const th = this.tooltip.offsetHeight || 120;
+    const topBar = document.getElementById('top-bar');
+    const bottomBar = document.getElementById('bottom-bar');
+    const topBarBottom = topBar ? topBar.getBoundingClientRect().bottom : 0;
+    const bottomBarTop = bottomBar ? bottomBar.getBoundingClientRect().top : window.innerHeight;
+
     let left = rect.left + rect.width / 2;
+    left = Math.max(tw / 2 + 8, Math.min(left, window.innerWidth - tw / 2 - 8));
+
     let top;
-
-    // Clamp left to viewport
-    left = Math.max(tw / 2 + 12, Math.min(left, window.innerWidth - tw / 2 - 12));
-
     if (arrowDir === 'down') {
-      // Tooltip above element
-      top = rect.top - th - 16;
+      top = rect.top - th - 14;
+      if (top < topBarBottom + 4) top = rect.bottom + 14;
+      if (top < topBarBottom + 4) top = topBarBottom + 4;
       this.tooltip.classList.remove('arrow-up');
       this.tooltip.classList.add('arrow-down');
     } else {
-      // Tooltip below element
-      top = rect.bottom + 16;
+      top = rect.bottom + 14;
+      if (isBoard) top = rect.top + 8;
+      if (top + th > bottomBarTop - 4) top = rect.top - th - 14;
       this.tooltip.classList.remove('arrow-down');
       this.tooltip.classList.add('arrow-up');
     }
 
-    // Clamp vertically
-    top = Math.max(8, Math.min(top, window.innerHeight - th - 8));
-
+    top = Math.max(4, Math.min(top, window.innerHeight - th - 4));
     this.tooltip.style.left = left + 'px';
     this.tooltip.style.top = top + 'px';
     this.tooltip.style.transform = 'translateX(-50%)';
@@ -2165,73 +2389,230 @@ const guideSystem = {
     this.backdrop.classList.remove('active');
     this.tooltip.style.display = 'none';
     this.tooltip.classList.remove('arrow-up', 'arrow-down');
+    this.tooltip.style.maxWidth = '260px';
   },
 
   finish() {
     this.hide();
     this.completed = true;
     this.waitingForSwap = false;
+    if (game.levelNum === 1 && typeof tutorialSystem !== 'undefined') {
+      setTimeout(function() { tutorialSystem.start(game.board); }, 400);
+    }
   },
 
-  onIdle() {
-    // Only used when waiting for swap during action guide
-  },
+  onIdle() {},
 
-  onInvalidMove() {
-    // No special handling
-  },
+  onInvalidMove() {},
 
   notifyMatch() {
     if (this.completed || this.firstMatchDone) return;
     this.firstMatchDone = true;
-    // Show celebration
     this.hide();
-    this.tooltip.innerHTML = `
-      <div style="text-align:center;">
-        <span style="font-size:24px;">👏</span>
-        <div style="font-size:13px;line-height:1.7;margin:6px 0;">
-          <strong>真棒！</strong>污染物被清除了，<br>中间格子变成了<strong>疏松土块</strong>！<br>再消除一次疏松土块就能复耕！
-        </div>
-        <div class="guide-close" id="guide-next-btn">继续</div>
-      </div>
-    `;
-    this.positionNear(document.getElementById('board-wrapper'), 'up');
+    this.tooltip.innerHTML = '<div style="text-align:center;">' +
+      '<span style="font-size:24px;">👏</span>' +
+      '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
+      '<strong>真棒！</strong>污染物被清除了，<br>中间格子变成了<strong>疏松土块</strong>！<br>再消除一次疏松土块就能复耕！</div>' +
+      '<div class="guide-close" id="guide-next-btn">继续</div></div>';
+    this.positionNear(document.getElementById('board-wrapper'), 'up', true);
     this.backdrop.classList.add('active');
     this.tooltip.style.display = 'block';
-    document.getElementById('guide-next-btn').addEventListener('click', () => {
-      this.hide();
-      this.waitingForSwap = false;
-    });
+    document.getElementById('guide-next-btn').addEventListener('click', () => { this.hide(); this.waitingForSwap = false; });
   },
 
   notifyReclaim() {
     if (this.completed || this.firstReclaimDone) return;
     this.firstReclaimDone = true;
-    // Show celebration
     this.hide();
-    this.tooltip.innerHTML = `
-      <div style="text-align:center;">
-        <span style="font-size:28px;">🌱</span>
-        <div style="font-size:13px;line-height:1.7;margin:6px 0;">
-          <strong>恭喜！</strong>你成功复耕了<strong>第一块健康耕地</strong>！<br>
-          粮食储备 +${game.levelConfig.grainGain}%<br>
-          继续努力，修复更多土地吧！
-        </div>
-        <div class="guide-close" id="guide-next-btn">💪 继续守护土地</div>
-      </div>
-    `;
-    this.positionNear(document.getElementById('board-wrapper'), 'up');
+    this.tooltip.innerHTML = '<div style="text-align:center;">' +
+      '<span style="font-size:28px;">🌱</span>' +
+      '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
+      '<strong>太好了！</strong>你成功复耕了<br>第一块<strong>健康耕地</strong>！🌾<br>继续守护这片土地吧！</div>' +
+      '<div class="guide-close" id="guide-next-btn">继续</div></div>';
+    this.positionNear(document.getElementById('board-wrapper'), 'up', true);
     this.backdrop.classList.add('active');
     this.tooltip.style.display = 'block';
-    document.getElementById('guide-next-btn').addEventListener('click', () => {
-      this.hide();
-      this.waitingForSwap = false;
-    });
+    document.getElementById('guide-next-btn').addEventListener('click', () => { this.hide(); this.waitingForSwap = false; });
+  }
+};
+// ============================================================
+// 13c. TUTORIAL SYSTEM — 交互式试玩教程 (Level 1 only)
+// ============================================================
+function findSwapForMatch(board, matchType) {
+  const size = board.length;
+  // Try every adjacent pair
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      // Try swap right
+      if (c + 1 < size) {
+        swapCellsRaw(board, r, c, r, c + 1);
+        const matches = findAllMatches(board).matchGroups;
+        const found = matches.some(m => matchType === 'pollutant' ? m.type !== BLOCK.LOOSE_SOIL : m.type === BLOCK.LOOSE_SOIL);
+        swapCellsRaw(board, r, c, r, c + 1); // swap back
+        if (found) return [{ r, c }, { r: r, c: c + 1 }];
+      }
+      // Try swap down
+      if (r + 1 < size) {
+        swapCellsRaw(board, r, c, r + 1, c);
+        const matches = findAllMatches(board).matchGroups;
+        const found = matches.some(m => matchType === 'pollutant' ? m.type !== BLOCK.LOOSE_SOIL : m.type === BLOCK.LOOSE_SOIL);
+        swapCellsRaw(board, r, c, r + 1, c); // swap back
+        if (found) return [{ r, c }, { r: r + 1, c }];
+      }
+    }
+  }
+  return null;
+}
+
+function swapCellsRaw(board, r1, c1, r2, c2) {
+  const tmp = board[r1][c1];
+  board[r1][c1] = board[r2][c2];
+  board[r2][c2] = tmp;
+}
+
+function isSameSwap(cells, r1, c1, r2, c2) {
+  const ids = cells.map(c => c.r + ',' + c.c).sort().join('|');
+  const swapIds = [r1 + ',' + c1, r2 + ',' + c2].sort().join('|');
+  return ids === swapIds;
+}
+
+const tutorialSystem = {
+  phase: 'done',        // 'pollutant' | 'loose_soil' | 'done'
+  targetCells: [],      // [{r, c}, {r, c}]
+  waitingForSwap: false,
+  highlightIntensity: 0,
+
+  start(board) {
+    if (this.phase !== 'done') return;
+    this.phase = 'pollutant';
+    this.startPhase(board);
+  },
+
+  startPhase(board) {
+    const matchType = this.phase === 'pollutant' ? 'pollutant' : 'loose_soil';
+    const swap = findSwapForMatch(board, matchType);
+    if (!swap) {
+      // No valid tutorial swap found — skip tutorial
+      this.phase = 'done';
+      guideSystem.completed = true;
+      return;
+    }
+    this.targetCells = swap;
+    this.waitingForSwap = true;
+
+    const tooltip = document.getElementById('guide-tooltip');
+    const backdrop = document.getElementById('guide-backdrop');
+
+    let html;
+    if (this.phase === 'pollutant') {
+      html = '<div style="text-align:center;">' +
+        '<span style="font-size:28px;">👆</span>' +
+        '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
+        '<strong>试试看！</strong><br>拖动这两个<strong style="color:#FFD54F;">高亮闪烁</strong>的方块互换<br>来消除污染物！</div></div>';
+    } else {
+      html = '<div style="text-align:center;">' +
+        '<span style="font-size:28px;">🌱</span>' +
+        '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
+        '<strong>最后一步！</strong><br>交换这两个<strong style="color:#FFD54F;">疏松土块</strong><br>复耕第一块健康耕地！</div></div>';
+    }
+
+    tooltip.innerHTML = html;
+    guideSystem.positionNear(document.getElementById('board-wrapper'), 'up', true);
+    backdrop.classList.add('active');
+    tooltip.style.display = 'block';
+    startRenderLoop();
+  },
+
+  onSwap(r1, c1, r2, c2) {
+    if (!this.waitingForSwap) return false;
+    if (!isSameSwap(this.targetCells, r1, c1, r2, c2)) {
+      // Wrong swap — brief shake/hint
+      const tooltip = document.getElementById('guide-tooltip');
+      tooltip.style.animation = 'none';
+      tooltip.offsetHeight; // reflow
+      tooltip.style.animation = 'tutorialShake 0.4s ease';
+      return false; // Allow the swap but show it's wrong
+    }
+    // Correct swap! Let the game process it
+    this.waitingForSwap = false;
+    return true;
+  },
+
+  onChainComplete(board) {
+    if (this.phase === 'done') return;
+
+    const tooltip = document.getElementById('guide-tooltip');
+    const backdrop = document.getElementById('guide-backdrop');
+
+    if (this.phase === 'pollutant') {
+      // Show success, then move to phase B
+      tooltip.innerHTML = '<div style="text-align:center;">' +
+        '<span style="font-size:28px;">✅</span>' +
+        '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
+        '<strong>成功！</strong>污染物被清除了<br>中间格子变成了疏松土块！</div>' +
+        '<div class="guide-close" id="tutorial-next-btn">👉 继续</div></div>';
+      guideSystem.positionNear(document.getElementById('board-wrapper'), 'up', true);
+      backdrop.classList.add('active');
+      tooltip.style.display = 'block';
+      document.getElementById('tutorial-next-btn').addEventListener('click', () => {
+        guideSystem.hide();
+        // Move to phase B
+        this.phase = 'loose_soil';
+        this.targetCells = [];
+        setTimeout(() => this.startPhase(board), 500);
+      });
+    } else if (this.phase === 'loose_soil') {
+      // Final success
+      tooltip.innerHTML = '<div style="text-align:center;">' +
+        '<span style="font-size:32px;">🌾</span>' +
+        '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
+        '<strong>太棒了！</strong>你成功复耕了<br>第一块<strong style="color:#66BB6A;">健康耕地</strong>！</div>' +
+        '<div class="guide-close" id="tutorial-done-btn">🎮 开始游戏</div></div>';
+      guideSystem.positionNear(document.getElementById('board-wrapper'), 'up', true);
+      backdrop.classList.add('active');
+      tooltip.style.display = 'block';
+      document.getElementById('tutorial-done-btn').addEventListener('click', () => {
+        guideSystem.hide();
+        this.phase = 'done';
+        this.targetCells = [];
+        guideSystem.completed = true;
+      });
+    }
+  },
+
+  renderHighlights(ctx) {
+    if (this.phase === 'done' || this.targetCells.length !== 2 || !cellSize) return;
+    const now = performance.now();
+    const pulse = 0.5 + 0.5 * Math.sin(now / 250);
+    const alpha = 0.4 + 0.55 * pulse;
+
+    for (const cell of this.targetCells) {
+      const x = cell.c * cellSize;
+      const y = cell.r * cellSize;
+      const pad = 2;
+
+      ctx.save();
+      // Outer glow
+      ctx.shadowColor = 'rgba(255, 215, 0, ' + alpha + ')';
+      ctx.shadowBlur = cellSize * 0.35;
+      ctx.strokeStyle = 'rgba(255, 215, 0, ' + alpha + ')';
+      ctx.lineWidth = 3 + 2 * pulse;
+      ctx.strokeRect(x + pad, y + pad, cellSize - pad * 2, cellSize - pad * 2);
+      // Inner bright border
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (alpha * 0.7) + ')';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + pad + 3, y + pad + 3, cellSize - (pad + 3) * 2, cellSize - (pad + 3) * 2);
+      ctx.restore();
+    }
   }
 };
 
 // Dismiss guide by clicking backdrop
 document.getElementById('guide-backdrop').addEventListener('click', () => {
+  // Don't dismiss during interactive tutorial
+  if (typeof tutorialSystem !== 'undefined' && tutorialSystem.waitingForSwap) return;
   guideSystem.finish();
 });
 
@@ -2250,7 +2631,14 @@ game.processChain = function(matchGroups) {
     guideSystem.waitingForSwap = false;
   }
 
-  return origProcessChain(matchGroups);
+  const result = origProcessChain(matchGroups);
+
+  // Notify tutorial after chain completes
+  if (typeof tutorialSystem !== 'undefined' && tutorialSystem.phase !== 'done') {
+    setTimeout(() => tutorialSystem.onChainComplete(game.board), 500);
+  }
+
+  return result;
 };
 
 // ============================================================
