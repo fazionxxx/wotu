@@ -204,6 +204,20 @@
     60% { transform: translateX(calc(-50% - 4px)); }
     80% { transform: translateX(calc(-50% + 4px)); }
   }
+  @keyframes tutorialGlowPulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.4); }
+  }
+  @keyframes tutorialSparkle {
+    0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.2) rotate(120deg); opacity: 1; }
+    70% { transform: translate(-50%, -50%) scale(0.8) rotate(240deg); opacity: 0.6; }
+    100% { transform: translate(-50%, -50%) scale(0) rotate(360deg); opacity: 0; }
+  }
+  @keyframes tutorialArrowBob {
+    0%, 100% { transform: translate(-50%, -50%); }
+    50% { transform: translate(-50%, calc(-50% - 6px)); }
+  }
   #guide-backdrop {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.35); z-index: 75; display: none;
@@ -1265,6 +1279,13 @@ function startRenderLoop() {
   }
 
   animFrameId = requestAnimationFrame(loop);
+}
+
+function stopRenderLoop() {
+  if (animFrameId) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }
 }
 
 function triggerRender(board, highlights = null) {
@@ -2630,6 +2651,7 @@ const tutorialSystem = {
       self.waitingForSwap = false;
       guideSystem.hide();
       guideSystem.completed = true;
+      stopRenderLoop();
       game.render();
     });
   },
@@ -2673,6 +2695,7 @@ const tutorialSystem = {
         // Move to phase B — use current game.board which is the final post-chain state
         this.phase = 'loose_soil';
         this.targetCells = [];
+        stopRenderLoop();
         game.render();
         setTimeout(() => this.startPhase(game.board), 500);
       });
@@ -2691,6 +2714,7 @@ const tutorialSystem = {
         this.phase = 'done';
         this.targetCells = [];
         guideSystem.completed = true;
+        stopRenderLoop();
         game.render();
       });
     }
@@ -2698,38 +2722,120 @@ const tutorialSystem = {
 
   renderHighlights(ctx) {
     if (this.phase === 'done' || this.targetCells.length !== 2 || !cellSize) return;
+    if (guideSystem.completed && this.phase === 'done') return;
     const now = performance.now();
-    const pulse = 0.5 + 0.5 * Math.sin(now / 250);
-    const alpha = 0.4 + 0.55 * pulse;
-
-    for (const cell of this.targetCells) {
-      const x = cell.c * cellSize;
-      const y = cell.r * cellSize;
-      const pad = 2;
-
+    const cs = cellSize;
+    // Draw directional connector between the two cells
+    const [a, b] = this.targetCells;
+    const ax = a.c * cs + cs / 2, ay = a.r * cs + cs / 2;
+    const bx = b.c * cs + cs / 2, by = b.r * cs + cs / 2;
+    const midX = (ax + bx) / 2, midY = (ay + by) / 2;
+    // Animated arrow between cells
+    const arrowBob = Math.sin(now / 400) * 4;
+    const arrowAlpha = 0.5 + 0.5 * Math.sin(now / 300);
+    ctx.save();
+    ctx.globalAlpha = arrowAlpha;
+    ctx.fillStyle = '#FFD54F';
+    ctx.font = (cs * 0.55) + 'px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('👇', midX, midY + arrowBob);
+    ctx.restore();
+    const highlightCell = (cell, phaseOffset) => {
+      const x = cell.c * cs, y = cell.r * cs;
+      const pad = 1;
+      const pulseSlow = 0.5 + 0.5 * Math.sin(now / 400 + phaseOffset);
+      const pulseFast = 0.5 + 0.5 * Math.sin(now / 180 + phaseOffset);
+      const alphaOuter = 0.5 + 0.45 * pulseSlow;
+      const alphaInner = 0.7 + 0.3 * pulseFast;
       ctx.save();
-      // Outer glow
-      ctx.shadowColor = 'rgba(255, 215, 0, ' + alpha + ')';
-      ctx.shadowBlur = cellSize * 0.35;
-      ctx.strokeStyle = 'rgba(255, 215, 0, ' + alpha + ')';
-      ctx.lineWidth = 3 + 2 * pulse;
-      ctx.strokeRect(x + pad, y + pad, cellSize - pad * 2, cellSize - pad * 2);
-      // Inner bright border
+      // Layer 1: Wide outer glow
+      ctx.shadowColor = 'rgba(255, 180, 0, ' + (alphaOuter * 0.7) + ')';
+      ctx.shadowBlur = cs * 0.55;
+      ctx.strokeStyle = 'rgba(255, 200, 0, ' + alphaOuter + ')';
+      ctx.lineWidth = 5 + 3 * pulseSlow;
+      roundRectCtx(ctx, x + pad, y + pad, cs - pad * 2, cs - pad * 2, Math.max(3, cs * 0.12));
+      ctx.stroke();
+      // Layer 2: Mid bright border
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (alpha * 0.7) + ')';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x + pad + 3, y + pad + 3, cellSize - (pad + 3) * 2, cellSize - (pad + 3) * 2);
+      ctx.strokeStyle = 'rgba(255, 235, 100, ' + alphaInner + ')';
+      ctx.lineWidth = 3.5 + 2 * pulseFast;
+      roundRectCtx(ctx, x + pad + 3, y + pad + 3, cs - (pad + 3) * 2, cs - (pad + 3) * 2, Math.max(2, cs * 0.1));
+      ctx.stroke();
+      // Layer 3: Inner white-hot ring
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + (alphaInner * 0.8) + ')';
+      ctx.lineWidth = 2;
+      roundRectCtx(ctx, x + pad + 6, y + pad + 6, cs - (pad + 6) * 2, cs - (pad + 6) * 2, Math.max(2, cs * 0.08));
+      ctx.stroke();
+      // Corner brackets
+      const br = cs * 0.18; // bracket length
+      const bw = 3 + 2 * pulseFast; // bracket width
+      const bAlpha = 0.6 + 0.4 * pulseFast;
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + bAlpha + ')';
+      ctx.lineWidth = bw;
+      ctx.lineCap = 'round';
+      // Top-left corner
+      ctx.beginPath();
+      ctx.moveTo(x + pad + 4, y + pad + 4 + br);
+      ctx.lineTo(x + pad + 4, y + pad + 4);
+      ctx.lineTo(x + pad + 4 + br, y + pad + 4);
+      ctx.stroke();
+      // Top-right corner
+      ctx.beginPath();
+      ctx.moveTo(x + cs - pad - 4 - br, y + pad + 4);
+      ctx.lineTo(x + cs - pad - 4, y + pad + 4);
+      ctx.lineTo(x + cs - pad - 4, y + pad + 4 + br);
+      ctx.stroke();
+      // Bottom-left corner
+      ctx.beginPath();
+      ctx.moveTo(x + pad + 4, y + cs - pad - 4 - br);
+      ctx.lineTo(x + pad + 4, y + cs - pad - 4);
+      ctx.lineTo(x + pad + 4 + br, y + cs - pad - 4);
+      ctx.stroke();
+      // Bottom-right corner
+      ctx.beginPath();
+      ctx.moveTo(x + cs - pad - 4, y + cs - pad - 4 - br);
+      ctx.lineTo(x + cs - pad - 4, y + cs - pad - 4);
+      ctx.lineTo(x + cs - pad - 4 - br, y + cs - pad - 4);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      // Sparkle dots orbiting the cell
+      const sparkleCount = 4;
+      for (let i = 0; i < sparkleCount; i++) {
+        const angle = (now / 1200 + i / sparkleCount) * Math.PI * 2;
+        const dist = cs * 0.42;
+        const sx = x + cs / 2 + Math.cos(angle) * dist;
+        const sy = y + cs / 2 + Math.sin(angle) * dist;
+        const sparkSize = 3 + 2 * Math.sin(now / 200 + i);
+        ctx.fillStyle = 'rgba(255, 255, 220, ' + (0.5 + 0.5 * Math.sin(now / 250 + i * 1.5)) + ')';
+        ctx.shadowColor = 'rgba(255, 220, 50, 0.9)';
+        ctx.shadowBlur = sparkSize * 2;
+        ctx.beginPath();
+        ctx.arc(sx, sy, sparkSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
-    }
+    };
+    highlightCell(this.targetCells[0], 0);
+    highlightCell(this.targetCells[1], Math.PI);
   }
 };
 
 // Dismiss guide by clicking backdrop
 document.getElementById('guide-backdrop').addEventListener('click', () => {
-  // Don't dismiss during interactive tutorial
+  // Don't dismiss during interactive tutorial swap phase
   if (typeof tutorialSystem !== 'undefined' && tutorialSystem.waitingForSwap) return;
-  guideSystem.finish();
+  // If tutorial is in progress, clean it up fully
+  if (typeof tutorialSystem !== 'undefined' && tutorialSystem.phase !== 'done') {
+    tutorialSystem.phase = 'done';
+    tutorialSystem.targetCells = [];
+    tutorialSystem.waitingForSwap = false;
+    stopRenderLoop();
+  }
+  guideSystem.completed = true;
+  guideSystem.hide();
+  game.render();
 });
 
 // Hook guide into game processChain
