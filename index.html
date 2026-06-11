@@ -8,20 +8,28 @@
 <title>沃土新生 - 2026全国土地日</title>
 <style>
   :root {
-    --earth-dark: #5D4037; --earth-mid: #8D6E63; --earth-light: #BCAAA4;
-    --earth-bg: #EFEBE9; --wheat: #F5DEB3; --gold: #FFA000; --gold-light: #FFD54F;
-    --green-sprout: #66BB6A; --danger: #E53935; --text-primary: #3E2723;
-    --text-secondary: #6D4C41; --white: #FFF8F0;
+    --frame-dark: #43250A; --frame-mid: #5C3516; --frame-light: #7A4E2A;
+    --parchment: #F7F2B1; --parchment-dim: #E8DF98; --parchment-bright: #FDFBC8;
+    --gold: #E1CB6B; --gold-light: #F0DC82; --gold-dark: #C4A840;
+    --green: #96B356; --green-light: #B2CC78;
+    --text-dark: #3E2410; --text-light: #FDF8D0;
+    --danger: #E53935;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
-    background: linear-gradient(180deg, #F1E0C8 0%, #E8D5B7 30%, #D7CCC8 100%);
+    background: #2a2218;
     min-height: 100vh; min-height: 100dvh;
     display: flex; justify-content: center; align-items: center;
     overflow: hidden; touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none; user-select: none;
+  }
+  /* Subtle grain overlay on body */
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: -1;
+    background: radial-gradient(ellipse at 50% 30%, #3d2e1c 0%, #2a2218 60%, #1a1410 100%);
+    opacity: 0.7;
   }
   #game-container {
     width: 100%; max-width: 480px; padding: 8px 12px;
@@ -29,172 +37,188 @@
   }
   #top-bar {
     width: 100%;
-    background: linear-gradient(180deg, rgba(93,64,55,0.92), rgba(109,76,65,0.9));
-    border-radius: 12px; padding: 10px 14px; color: #FFF8F0;
-    box-shadow: 0 2px 8px rgba(62,39,35,0.15);
+    background: linear-gradient(180deg, #7A4E2A 0%, #5C3516 40%, #43250A 100%);
+    border-radius: 10px; padding: 10px 14px; color: #FDF8D0;
+    box-shadow: 0 3px 10px rgba(30,15,5,0.35), inset 0 1px 0 rgba(160,110,65,0.3);
     display: flex; flex-direction: column; gap: 6px;
+    border: 2px solid rgba(30,12,3,0.5);
   }
   #top-bar .info-row {
     display: flex; justify-content: space-between; align-items: center;
     font-size: 13px; font-weight: 500;
   }
-  #level-name { font-size: 15px; font-weight: 700; color: #FFD54F; letter-spacing: 1px; }
+  #level-name { font-size: 15px; font-weight: 700; color: #F0DC82; letter-spacing: 1px; }
   .stat { display: flex; align-items: center; gap: 4px; }
   .stat-icon { font-size: 16px; }
-  .stat-value { font-weight: 700; font-size: 14px; color: #FFD54F; }
+  .stat-value { font-weight: 700; font-size: 14px; color: #F0DC82; }
   #grain-bar-wrapper { display: flex; align-items: center; gap: 8px; }
   #farmer-avatar {
     width: 32px; height: 32px; border-radius: 50%;
-    background: #FFCC80; border: 2px solid #FFE0B2; flex-shrink: 0;
+    background: #F0DC82; border: 2px solid #C4A840; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 18px;
+    box-shadow: 0 1px 3px rgba(30,15,5,0.25);
   }
   #grain-bar-outer {
-    flex: 1; height: 14px; background: rgba(255,255,255,0.18);
-    border-radius: 7px; overflow: hidden; position: relative;
-    border: 1px solid rgba(255,255,255,0.25);
+    flex: 1; height: 16px; background: rgba(40,20,8,0.5);
+    border-radius: 8px; overflow: hidden; position: relative;
+    border: 1.5px solid rgba(50,25,10,0.55);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
   }
   #grain-bar-inner {
     height: 100%;
-    background: linear-gradient(90deg, #F9A825, #FFD54F, #FFB300);
+    background: linear-gradient(90deg, #C4A840 0%, #E1CB6B 30%, #F0DC82 60%, #E1CB6B 100%);
     border-radius: 7px;
     transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
+    box-shadow: inset 0 1px 0 rgba(255,255,200,0.35);
   }
-  #grain-bar-label { font-size: 10px; font-weight: 600; color: #FFE082; white-space: nowrap; min-width: 42px; text-align: right; }
+  #grain-bar-inner::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%;
+    background: linear-gradient(180deg, rgba(255,255,220,0.35), transparent);
+    border-radius: 7px 7px 0 0;
+  }
+  #grain-bar-label { font-size: 10px; font-weight: 600; color: #E1CB6B; white-space: nowrap; min-width: 42px; text-align: right; }
   #board-wrapper {
-    position: relative; background: rgba(255,248,240,0.35);
-    border-radius: 12px; padding: 8px; box-shadow: 0 2px 8px rgba(62,39,35,0.15);
+    position: relative; background: rgba(247,242,177,0.18);
+    border-radius: 10px; padding: 8px; box-shadow: 0 2px 8px rgba(30,15,5,0.2);
     display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid rgba(120,100,70,0.22);
   }
-  canvas#game-canvas { display: block; border-radius: 6px; cursor: pointer; }
+  canvas#game-canvas { display: block; border-radius: 4px; cursor: pointer; }
   #cell-info {
     width: 100%; max-width: 480px; padding: 6px 14px;
-    background: rgba(93,64,55,0.85); border-radius: 8px;
-    color: #FFF8F0; font-size: 12px; display: flex;
+    background: linear-gradient(180deg, #6B3D23, #4A2510); border-radius: 6px;
+    color: #FDF8D0; font-size: 12px; display: flex;
     align-items: center; gap: 8px; min-height: 34px;
-    box-shadow: 0 1px 4px rgba(62,39,35,0.15);
+    box-shadow: 0 1px 4px rgba(30,15,5,0.2);
     transition: background 0.2s;
+    border: 1.5px solid rgba(30,12,3,0.4);
   }
   #cell-info-icon { font-size: 18px; flex-shrink: 0; }
   #cell-info-name { font-weight: 600; white-space: nowrap; min-width: 56px; }
-  #cell-info-desc { font-size: 11px; color: #FFE082; opacity: 0.85; }
-  #cell-info.highlight { background: rgba(93,64,55,0.95); box-shadow: 0 2px 8px rgba(255,160,0,0.3); }
+  #cell-info-desc { font-size: 11px; color: #E1CB6B; opacity: 0.85; }
+  #cell-info.highlight { background: linear-gradient(180deg, #7A4E2A, #5C3516); box-shadow: 0 2px 8px rgba(225,171,0,0.3); }
 
   /* Level Selector */
   #level-selector {
     width: 100%; max-width: 480px; display: flex;
     align-items: center; gap: 6px; padding: 6px 8px;
-    background: rgba(93,64,55,0.45); border-radius: 10px;
+    background: rgba(67,37,10,0.35); border-radius: 8px;
     flex-wrap: wrap; justify-content: center;
+    border: 1px solid rgba(67,37,10,0.2);
   }
   #level-selector .level-select-label {
-    font-size: 12px; font-weight: 600; color: #FFE082;
+    font-size: 12px; font-weight: 600; color: #E1CB6B;
     white-space: nowrap; margin-right: 2px;
   }
   .level-btn {
-    flex: 1; min-width: 90px; padding: 6px 8px;
-    border-radius: 16px; border: 2px solid transparent;
+    flex: 1; min-width: 90px; padding: 7px 10px;
+    border-radius: 14px; border: 2px solid rgba(60,30,12,0.4);
     font-size: 11px; font-weight: 600; cursor: pointer;
     transition: all 0.25s; white-space: nowrap;
     letter-spacing: 0.3px;
   }
   .level-btn.active {
-    background: linear-gradient(135deg, #FFA000, #FF8F00);
-    color: #FFF; border-color: #FFD54F;
-    box-shadow: 0 2px 8px rgba(255,160,0,0.35);
+    background: linear-gradient(180deg, #F0DC82, #E1CB6B);
+    color: #3E2410; border-color: #C4A840;
+    box-shadow: 0 2px 8px rgba(196,168,64,0.4);
   }
   .level-btn.unlocked {
-    background: rgba(255,255,255,0.85);
-    color: #5D4037; border-color: #BCAAA4;
+    background: linear-gradient(180deg, #FDFBD0, #F2EAA0);
+    color: #3E2410; border-color: rgba(80,50,20,0.35);
   }
-  .level-btn.unlocked:hover { background: #FFF; border-color: #8D6E63; }
+  .level-btn.unlocked:hover { background: #FDFBC8; border-color: #7A4E2A; }
   .level-btn.locked {
-    background: rgba(255,255,255,0.25);
-    color: #A1887F; border-color: rgba(255,255,255,0.15);
+    background: rgba(160,140,110,0.25);
+    color: #9B8B7B; border-color: rgba(160,140,110,0.2);
     cursor: not-allowed; opacity: 0.7;
   }
   .level-btn:active:not(.locked) { transform: scale(0.95); }
 
   #bottom-bar { width: 100%; display: flex; gap: 10px; justify-content: center; }
   #bottom-bar button {
-    flex: 1; max-width: 140px; padding: 10px 0; border: none; border-radius: 22px;
-    font-size: 14px; font-weight: 600; letter-spacing: 0.5px; cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s; touch-action: manipulation;
+    flex: 1; max-width: 140px; padding: 10px 0; border: 2px solid rgba(60,30,12,0.4);
+    border-radius: 18px; font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; touch-action: manipulation;
   }
   #bottom-bar button:active { transform: scale(0.95); }
-  #btn-restart { background: #ECEFF1; color: #6D4C41; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-  #btn-next { background: linear-gradient(135deg, #66BB6A, #43A047); color: white; box-shadow: 0 3px 10px rgba(67,160,71,0.35); display: none; }
-  #btn-rules { background: rgba(255,255,255,0.25); color: #FFF8F0; border: 1px solid rgba(255,255,255,0.4); box-shadow: none; font-size: 13px; }
+  #btn-restart { background: linear-gradient(180deg, #FDFBDA, #EBE0A0); color: #3E2410; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+  #btn-next { background: linear-gradient(180deg, #F0DC82, #C4A840); color: #3E2410; box-shadow: 0 3px 10px rgba(196,168,64,0.4); display: none; }
+  #btn-rules { background: linear-gradient(180deg, #FDFBD0, #F2EAA0); color: #3E2410; border: 2px solid rgba(80,50,20,0.35); font-size: 13px; }
   #rules-popup-box { max-height: 75vh; overflow-y: auto; text-align: left; }
   #rules-popup-box .rule-section { margin-bottom: 14px; }
-  #rules-popup-box .rule-section h4 { font-size: 14px; color: #5D4037; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-  #rules-popup-box .rule-section p { font-size: 12px; color: #6D4C41; line-height: 1.7; margin: 0; }
+  #rules-popup-box .rule-section h4 { font-size: 14px; color: #43250A; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  #rules-popup-box .rule-section p { font-size: 12px; color: #5C3516; line-height: 1.7; margin: 0; }
   #rules-popup-box .rule-blocks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   #rules-popup-box .rule-block-tag {
     font-size: 12px; padding: 3px 8px; border-radius: 10px;
-    background: #EFEBE9; color: #5D4037; white-space: nowrap;
+    background: rgba(247,242,177,0.5); color: #43250A; white-space: nowrap;
+    border: 1px solid rgba(67,37,10,0.15);
   }
   #popup-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(62,39,35,0.55); display: none;
+    background: rgba(30,15,5,0.55); display: none;
     align-items: center; justify-content: center; z-index: 100;
     backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
   }
   #popup-overlay.active { display: flex; }
   #popup-box {
-    background: linear-gradient(180deg, #FFFDF7, #FFF8E7);
-    border-radius: 16px; padding: 24px 20px; max-width: 340px; width: 85%;
-    text-align: center; box-shadow: 0 8px 32px rgba(62,39,35,0.25);
+    background: linear-gradient(180deg, #FDFBC8 0%, #F7F2B1 40%, #E8DF98 100%);
+    border-radius: 14px; padding: 24px 20px; max-width: 340px; width: 85%;
+    text-align: center; box-shadow: 0 8px 32px rgba(30,15,5,0.35);
     animation: popupIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: 3px solid rgba(67,37,10,0.5);
   }
   @keyframes popupIn {
     from { transform: scale(0.8); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
   }
   #popup-icon { font-size: 48px; margin-bottom: 8px; }
-  #popup-title { font-size: 20px; font-weight: 700; color: #3E2723; margin-bottom: 6px; }
-  #popup-message { font-size: 13px; color: #6D4C41; line-height: 1.7; margin-bottom: 16px; }
+  #popup-title { font-size: 20px; font-weight: 700; color: #3E2410; margin-bottom: 6px; }
+  #popup-message { font-size: 13px; color: #5C3516; line-height: 1.7; margin-bottom: 16px; }
   #popup-quote {
-    background: #FFF8E1; border-left: 3px solid #FFA000;
-    padding: 10px 12px; font-size: 12px; color: #6D4C41; line-height: 1.6;
+    background: #FDFBC8; border-left: 3px solid #C4A840;
+    padding: 10px 12px; font-size: 12px; color: #5C3516; line-height: 1.6;
     text-align: left; margin-bottom: 16px; border-radius: 0 8px 8px 0; display: none;
   }
-  #popup-quote .attribution { display: block; text-align: right; color: #A1887F; font-size: 11px; margin-top: 4px; }
+  #popup-quote .attribution { display: block; text-align: right; color: #7A4E2A; font-size: 11px; margin-top: 4px; }
   #popup-btn {
-    display: inline-block; padding: 10px 36px; border: none; border-radius: 22px;
-    font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px;
+    display: inline-block; padding: 10px 36px; border: 2px solid rgba(60,30,12,0.4);
+    border-radius: 18px; font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px;
     transition: transform 0.15s;
   }
   #popup-btn:active { transform: scale(0.95); }
-  .win-btn { background: linear-gradient(135deg, #66BB6A, #43A047); color: white; box-shadow: 0 3px 12px rgba(67,160,71,0.4); }
-  .lose-btn { background: linear-gradient(135deg, #EF5350, #E53935); color: white; box-shadow: 0 3px 12px rgba(229,57,53,0.35); }
-  .summary-btn { background: linear-gradient(135deg, #FFA000, #FF8F00); color: white; box-shadow: 0 3px 12px rgba(255,160,0,0.4); }
+  .win-btn { background: linear-gradient(180deg, #F0DC82, #C4A840); color: #3E2410; box-shadow: 0 3px 12px rgba(196,168,64,0.45); }
+  .lose-btn { background: linear-gradient(180deg, #EF5350, #E53935); color: white; box-shadow: 0 3px 12px rgba(229,57,53,0.35); }
+  .summary-btn { background: linear-gradient(180deg, #E1CB6B, #C4A840); color: #3E2410; box-shadow: 0 3px 12px rgba(196,168,64,0.45); }
   #guide-tooltip {
-    position: fixed; z-index: 80; background: rgba(62,39,35,0.93); color: #FFF;
-    padding: 12px 16px; border-radius: 12px; font-size: 13px; line-height: 1.6;
+    position: fixed; z-index: 80; background: linear-gradient(180deg, #FDFBC8, #F7F2B1);
+    color: #3E2410; padding: 12px 16px; border-radius: 10px; font-size: 13px; line-height: 1.6;
     max-width: 260px; text-align: left; pointer-events: auto;
-    display: none; box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+    display: none; box-shadow: 0 4px 20px rgba(30,15,5,0.35);
     transition: opacity 0.3s; cursor: default;
+    border: 2.5px solid rgba(67,37,10,0.45);
   }
   #guide-tooltip .guide-close {
     display: inline-block; margin-top: 8px; padding: 4px 14px;
-    background: rgba(255,255,255,0.2); border-radius: 12px;
-    font-size: 11px; cursor: pointer; color: #FFE082;
+    background: rgba(196,168,64,0.25); border-radius: 12px;
+    font-size: 11px; cursor: pointer; color: #5C3516;
     text-align: center; transition: background 0.2s;
+    border: 1px solid rgba(196,168,64,0.35);
   }
-  #guide-tooltip .guide-close:hover { background: rgba(255,255,255,0.35); }
+  #guide-tooltip .guide-close:hover { background: rgba(196,168,64,0.45); }
   #guide-tooltip::after {
     content: ''; position: absolute; width: 0; height: 0;
     border-left: 8px solid transparent; border-right: 8px solid transparent;
   }
   #guide-tooltip.arrow-down::after {
     top: -8px; left: 50%; transform: translateX(-50%);
-    border-bottom: 8px solid rgba(62,39,35,0.93);
+    border-bottom: 8px solid #FDFBC8;
     border-top: none;
   }
   #guide-tooltip.arrow-up::after {
     bottom: -8px; left: 50%; transform: translateX(-50%);
-    border-top: 8px solid rgba(62,39,35,0.93);
+    border-top: 8px solid #E8DF98;
     border-bottom: none;
   }
   @keyframes tutorialShake {
@@ -220,44 +244,46 @@
   }
   #guide-backdrop {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.35); z-index: 75; display: none;
+    background: rgba(20,10,5,0.45); z-index: 75; display: none;
     pointer-events: auto;
   }
   #guide-backdrop.active { display: block; }
   #btn-mute {
     position: fixed; top: 12px; right: 12px; width: 36px; height: 36px;
-    border-radius: 50%; border: none; background: rgba(255,255,255,0.75);
+    border-radius: 50%; border: 2px solid rgba(67,37,10,0.35);
+    background: rgba(247,242,177,0.8);
     font-size: 18px; cursor: pointer; z-index: 50;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    box-shadow: 0 2px 6px rgba(30,15,5,0.15);
     display: flex; align-items: center; justify-content: center;
   }
   #summary-screen {
     display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(180deg, #E8D5B7, #D7CCC8);
+    background: linear-gradient(180deg, #F1E0C8, #D7CCC8);
     z-index: 200; flex-direction: column; align-items: center; justify-content: center;
     padding: 24px; text-align: center;
   }
   #summary-screen.active { display: flex; }
-  #summary-screen h2 { font-size: 24px; color: #3E2723; margin-bottom: 8px; }
-  .summary-stats { font-size: 15px; color: #5D4037; line-height: 2; margin-bottom: 16px; }
-  .summary-stats span { font-weight: 700; color: #33691E; }
+  #summary-screen h2 { font-size: 24px; color: #3E2410; margin-bottom: 8px; }
+  .summary-stats { font-size: 15px; color: #43250A; line-height: 2; margin-bottom: 16px; }
+  .summary-stats span { font-weight: 700; color: #7A4E2A; }
 
   /* Start Screen */
   #start-screen {
     position: fixed; inset: 0; z-index: 1000;
-    background: linear-gradient(180deg, #F1E0C8 0%, #E8D5B7 30%, #D7CCC8 100%);
+    background: linear-gradient(180deg, #3d2e1c 0%, #2a2218 50%, #1a1410 100%);
     display: flex; align-items: center; justify-content: center;
     flex-direction: column; padding: 24px;
     transition: opacity 0.5s ease, visibility 0.5s ease;
   }
   #start-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
   #start-screen .start-card {
-    background: rgba(255,255,255,0.85);
-    border-radius: 20px; padding: 32px 24px;
+    background: linear-gradient(180deg, #FDFBC8 0%, #F7F2B1 50%, #E8DF98 100%);
+    border-radius: 16px; padding: 32px 24px;
     max-width: 380px; width: 100%;
     text-align: center;
-    box-shadow: 0 8px 32px rgba(62,39,35,0.25);
+    box-shadow: 0 8px 32px rgba(30,15,5,0.4);
     animation: startFadeIn 0.8s ease;
+    border: 3px solid rgba(67,37,10,0.4);
   }
   @keyframes startFadeIn {
     from { opacity: 0; transform: translateY(20px); }
@@ -265,34 +291,34 @@
   }
   #start-screen .start-icon { font-size: 56px; margin-bottom: 8px; }
   #start-screen h1 {
-    font-size: 28px; color: #3E2723; font-weight: 800;
+    font-size: 28px; color: #3E2410; font-weight: 800;
     letter-spacing: 2px; margin-bottom: 4px;
   }
   #start-screen .start-subtitle {
-    font-size: 13px; color: #8D6E63; margin-bottom: 20px;
+    font-size: 13px; color: #7A4E2A; margin-bottom: 20px;
     letter-spacing: 1px;
   }
   #start-screen .start-divider {
-    width: 48px; height: 3px; background: #FFA000;
+    width: 48px; height: 3px; background: #C4A840;
     border-radius: 2px; margin: 0 auto 16px;
   }
   #start-screen .start-intro {
-    font-size: 14px; color: #5D4037; line-height: 1.8;
+    font-size: 14px; color: #43250A; line-height: 1.8;
     text-align: left; margin-bottom: 24px;
   }
   #start-screen .start-intro .highlight {
-    color: #33691E; font-weight: 600;
+    color: #5C3516; font-weight: 600;
   }
   #btn-start-game {
-    background: linear-gradient(135deg, #66BB6A, #43A047);
-    color: #fff; border: none; border-radius: 24px;
-    padding: 12px 48px; font-size: 16px; font-weight: 700;
+    background: linear-gradient(180deg, #F0DC82, #C4A840);
+    color: #3E2410; border: 2px solid rgba(67,37,10,0.35);
+    border-radius: 20px; padding: 12px 48px; font-size: 16px; font-weight: 700;
     cursor: pointer; letter-spacing: 1px;
-    box-shadow: 0 4px 12px rgba(67,160,71,0.4);
+    box-shadow: 0 4px 12px rgba(196,168,64,0.5);
     transition: transform 0.15s, box-shadow 0.15s;
     -webkit-tap-highlight-color: transparent;
   }
-  #btn-start-game:active { transform: scale(0.95); box-shadow: 0 2px 6px rgba(67,160,71,0.3); }
+  #btn-start-game:active { transform: scale(0.95); box-shadow: 0 2px 6px rgba(196,168,64,0.35); }
 </style>
 </head>
 <body>
@@ -364,16 +390,16 @@
 <div id="summary-screen">
   <div style="font-size:56px;margin-bottom:12px;">🌍🌾</div>
   <h2>沃土新生！</h2>
-  <p style="color:#5D4037;margin-bottom:16px;">感谢你为守护土地做出的贡献</p>
+  <p style="color:#43250A;margin-bottom:16px;">感谢你为守护土地做出的贡献</p>
   <div class="summary-stats">
     共修复耕地：<span id="summary-total-farmland">0</span> 块<br>
     节约粮食储备：<span id="summary-grain-saved">0</span>%<br>
     通关关卡：<span id="summary-levels-cleared">3</span> / 3
   </div>
-  <p style="font-size:13px;color:#8D6E63;max-width:280px;line-height:1.6;margin-bottom:20px;">
+  <p style="font-size:13px;color:#7A4E2A;max-width:280px;line-height:1.6;margin-bottom:20px;">
     "珍惜每一寸土地 促进高质量发展"<br>——2026年全国土地日
   </p>
-  <button id="btn-summary-restart" style="padding:12px 40px;border:none;border-radius:22px;font-size:16px;font-weight:600;background:linear-gradient(135deg,#FFA000,#FF8F00);color:white;cursor:pointer;box-shadow:0 3px 12px rgba(255,160,0,0.4);">🔄 重新开始</button>
+  <button id="btn-summary-restart" style="padding:12px 40px;border:2px solid rgba(67,37,10,0.35);border-radius:18px;font-size:16px;font-weight:600;background:linear-gradient(180deg,#F0DC82,#C4A840);color:#3E2410;cursor:pointer;box-shadow:0 3px 12px rgba(196,168,64,0.45);">🔄 重新开始</button>
 </div>
 
 <script>
@@ -440,7 +466,7 @@ const LEVELS = [
       title: '第一关 · 复苏之风',
       icon: '🌿',
       text: `<div style="text-align:center;margin-bottom:8px;">
-  <span style="font-size:15px;color:#FFD54F;"><strong>欢迎你，土地守护者！</strong></span>
+  <span style="font-size:15px;color:#F0DC82;"><strong>欢迎你，土地守护者！</strong></span>
 </div>
 这片土地正遭受<strong>三种退化</strong>：
 <br>🪨 板结块 · 🏜️ 沙化块 · 🦠 有机污染物
@@ -462,7 +488,7 @@ const LEVELS = [
       title: '第二关 · 大地疗愈',
       icon: '🏥',
       text: `<div style="text-align:center;margin-bottom:8px;">
-  <span style="font-size:15px;color:#FFD54F;"><strong>🆕 新增污染物：重金属污染块</strong></span>
+  <span style="font-size:15px;color:#F0DC82;"><strong>🆕 新增污染物：重金属污染块</strong></span>
 </div>
 土地遭受了更复杂的<strong>化学污染</strong>，板结、沙化、有机物、重金属<strong>四重威胁并存</strong>。
 <br><br>
@@ -483,7 +509,7 @@ const LEVELS = [
       title: '第三关 · 沃野守卫',
       icon: '🛡️',
       text: `<div style="text-align:center;margin-bottom:8px;">
-  <span style="font-size:15px;color:#FFD54F;"><strong>🆕 新增污染物：盐碱晶</strong></span>
+  <span style="font-size:15px;color:#F0DC82;"><strong>🆕 新增污染物：盐碱晶</strong></span>
 </div>
 <strong>五种土地退化类型全部登场！</strong>
 <br>板结 · 沙化 · 有机物 · 重金属 · 盐碱
@@ -575,7 +601,7 @@ function addBounce(r, c, intensity = 1.0) {
   if (cellSize > 0 && game.board && game.board[r] && game.board[r][c]) {
     const cx = c * cellSize + cellSize / 2;
     const cy = r * cellSize + cellSize / 2;
-    spawnParticles(cx, cy, 6, '#FFD54F', cellSize * 0.06, 300);
+    spawnParticles(cx, cy, 6, '#F0DC82', cellSize * 0.06, 300);
   }
 }
 
@@ -841,6 +867,103 @@ function resolveChain(board, pollutantTypes) {
 // ============================================================
 // 7. RENDERER — Canvas 渲染
 // ============================================================
+
+// ── 手绘风格色板 & 工具函数 ──
+const PALETTE = {
+  frameDark:    '#43250A', frameMid: '#5C3516', frameLight: '#7A4E2A',
+  parchment:    '#F7F2B1', parchmentDim: '#E8DF98', parchmentBright:'#FDFBC8',
+  gold:         '#E1CB6B', goldLight: '#F0DC82', goldDark: '#C4A840',
+  green:        '#96B356', greenLight: '#B2CC78',
+  textDark:     '#3E2410', textLight: '#FDF8D0',
+};
+
+function hashXY(x, y, seed) {
+  let h = ((x * 374761393 + y * 668265263 + seed * 1274126177) >>> 0);
+  h = ((h ^ (h >> 13)) * 1274126177) >>> 0;
+  return (h & 0x7fffffff) / 0x7fffffff;
+}
+
+function wobblyLine(ctx, x1, y1, x2, y2, jitter, seed) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 0.5) { ctx.lineTo(x2, y2); return; }
+  const nx = -dy / len, ny = dx / len;
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const jx = (hashXY(Math.round(mx), Math.round(my), seed) - 0.5) * jitter * len * 0.4;
+  ctx.quadraticCurveTo(mx + nx * jx, my + ny * jx, x2, y2);
+}
+
+function wobblyRoundRect(ctx, x, y, w, h, r, jitter, seed) {
+  const maxR = Math.min(w, h) / 2 - 1;
+  const cr = Math.min(r, maxR);
+  const j = jitter * Math.min(w, h);
+
+  ctx.beginPath();
+  ctx.moveTo(x + cr, y);
+  wobblyLine(ctx, x + cr, y, x + w - cr, y, jitter, seed);
+  const tr_jx = (hashXY(10, 0, seed) - 0.5) * j * 0.6;
+  const tr_jy = (hashXY(10, 1, seed) - 0.5) * j * 0.6;
+  ctx.quadraticCurveTo(x + w + tr_jx, y + tr_jy, x + w - cr + tr_jx * 0.3, y + cr + tr_jy * 0.3);
+  wobblyLine(ctx, x + w, y + cr, x + w, y + h - cr, jitter, seed + 11);
+  const br_jx = (hashXY(20, 0, seed) - 0.5) * j * 0.6;
+  const br_jy = (hashXY(20, 1, seed) - 0.5) * j * 0.6;
+  ctx.quadraticCurveTo(x + w + br_jx, y + h + br_jy, x + w - cr + br_jx * 0.3, y + h - cr + br_jy * 0.3);
+  wobblyLine(ctx, x + w - cr, y + h, x + cr, y + h, jitter, seed + 22);
+  const bl_jx = (hashXY(30, 0, seed) - 0.5) * j * 0.6;
+  const bl_jy = (hashXY(30, 1, seed) - 0.5) * j * 0.6;
+  ctx.quadraticCurveTo(x + bl_jx, y + h + bl_jy, x + cr + bl_jx * 0.3, y + h - cr + bl_jy * 0.3);
+  wobblyLine(ctx, x, y + h - cr, x, y + cr, jitter, seed + 33);
+  const tl_jx = (hashXY(40, 0, seed) - 0.5) * j * 0.6;
+  const tl_jy = (hashXY(40, 1, seed) - 0.5) * j * 0.6;
+  ctx.quadraticCurveTo(x + tl_jx, y + tl_jy, x + cr + tl_jx * 0.3, y + cr + tl_jy * 0.3);
+  ctx.closePath();
+}
+
+function handStroke(ctx, color, baseWidth, passes, offsetMax, seed) {
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let p = 0; p < passes; p++) {
+    const ox = (hashXY(p, 0, seed) - 0.5) * offsetMax;
+    const oy = (hashXY(p, 1, seed) - 0.5) * offsetMax;
+    const lw = baseWidth * (0.75 + hashXY(p, 2, seed) * 0.5);
+    ctx.lineWidth = lw;
+    ctx.save();
+    ctx.translate(ox, oy);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function speckleNoise(ctx, x, y, w, h, count, colorBase, alphaRange, seed) {
+  for (let i = 0; i < count; i++) {
+    const sx = x + hashXY(i, 0, seed) * w;
+    const sy = y + hashXY(i, 1, seed) * h;
+    const sr = 0.3 + hashXY(i, 2, seed) * 1.6;
+    const alpha = alphaRange[0] + hashXY(i, 3, seed) * (alphaRange[1] - alphaRange[0]);
+    ctx.fillStyle = colorBase.replace('A', alpha.toFixed(2));
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function handHatch(ctx, x, y, w, h, count, color, seed) {
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < count; i++) {
+    const hx = x + hashXY(i, 0, seed) * w;
+    const hy = y + hashXY(i, 1, seed) * h;
+    const angle = hashXY(i, 2, seed) * Math.PI * 2;
+    const len = 3 + hashXY(i, 3, seed) * 12;
+    ctx.lineWidth = 0.3 + hashXY(i, 4, seed) * 1.0;
+    ctx.beginPath();
+    ctx.moveTo(hx, hy);
+    ctx.lineTo(hx + Math.cos(angle) * len, hy + Math.sin(angle) * len);
+    ctx.stroke();
+  }
+}
+
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
@@ -882,6 +1005,8 @@ function drawBlock(x, y, size, type, r, c, scaleOverride) {
   const inner = size - pad * 2;
   const colors = BLOCK_COLORS[type];
   if (!colors) return;
+  const br = Math.max(2, size * 0.12);
+  const wobblySeed = (r * 20 + c) * 137 + 5000;
 
   // Compute bounce scale
   let bounceScale = scaleOverride || 1;
@@ -909,14 +1034,14 @@ function drawBlock(x, y, size, type, r, c, scaleOverride) {
     ctx.translate(-cx, -cy);
   }
 
-  // Shadow
-  ctx.shadowColor = 'rgba(0,0,0,0.2)';
-  ctx.shadowBlur = size * 0.06;
+  // Shadow (subtle, for depth)
+  ctx.shadowColor = 'rgba(0,0,0,0.18)';
+  ctx.shadowBlur = size * 0.05;
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
 
-  // Rounded rect background
-  roundRect(x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
+  // Wobbly rounded rect background
+  wobblyRoundRect(ctx, x + pad, y + pad, inner, inner, br, 0.018, wobblySeed);
   ctx.fillStyle = colors.fill;
   ctx.fill();
 
@@ -930,15 +1055,13 @@ function drawBlock(x, y, size, type, r, c, scaleOverride) {
   hlGrad.addColorStop(0, colors.light);
   hlGrad.addColorStop(0.5, colors.fill);
   hlGrad.addColorStop(1, colors.stroke);
-  roundRect(x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
+  wobblyRoundRect(ctx, x + pad, y + pad, inner, inner, br, 0.018, wobblySeed);
   ctx.fillStyle = hlGrad;
   ctx.fill();
 
-  // Stroke
-  roundRect(x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
-  ctx.strokeStyle = colors.stroke;
-  ctx.lineWidth = Math.max(1, size * 0.03);
-  ctx.stroke();
+  // Hand-drawn stroke (multi-pass offset for sketch feel)
+  wobblyRoundRect(ctx, x + pad, y + pad, inner, inner, br, 0.018, wobblySeed);
+  handStroke(ctx, colors.stroke, Math.max(0.8, size * 0.025), 2, 0.7, wobblySeed + 100);
 
   // Texture patterns
   const cx = x + size / 2;
@@ -1042,40 +1165,47 @@ function drawBoard(board, highlightCells = null) {
   const size = board.length;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Earth-tone background with subtle texture
+  // Parchment background with grain texture
   const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  bgGrad.addColorStop(0, '#D5C8B5');
-  bgGrad.addColorStop(0.5, '#D7CCC8');
-  bgGrad.addColorStop(1, '#C9BBA8');
+  bgGrad.addColorStop(0, '#FDFBC8');
+  bgGrad.addColorStop(0.5, '#F7F2B1');
+  bgGrad.addColorStop(1, '#E8DF98');
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Subtle grain texture overlay
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  for (let i = 0; i < canvas.width; i += 4) {
-    for (let j = 0; j < canvas.height; j += 4) {
-      if ((i + j) % 8 === 0) {
-        ctx.fillRect(i, j, 2, 2);
-      }
-    }
-  }
+  // High-density noise texture (parchment grain)
+  const noiseCount = Math.floor(canvas.width * canvas.height * 0.03);
+  speckleNoise(ctx, 0, 0, canvas.width, canvas.height, noiseCount, 'rgba(180,165,100,A)', [0.02, 0.10], 7700);
 
-  // Grid lines
-  ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-  ctx.lineWidth = 0.5;
+  // Hand-drawn grid lines (wobbly)
+  ctx.strokeStyle = 'rgba(139,110,60,0.2)';
+  ctx.lineWidth = 0.6;
+  ctx.lineCap = 'round';
   for (let i = 0; i <= size; i++) {
     const pos = i * cellSize;
-    ctx.beginPath(); ctx.moveTo(pos, 0); ctx.lineTo(pos, canvas.height); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, pos); ctx.lineTo(canvas.width, pos); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos, 0);
+    wobblyLine(ctx, pos, 0, pos, canvas.height, 0.015, 7800 + i);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, pos);
+    wobblyLine(ctx, 0, pos, canvas.width, pos, 0.015, 7900 + i);
+    ctx.stroke();
   }
 
-  // Subtle darker border between cells
-  ctx.strokeStyle = 'rgba(139,119,101,0.2)';
-  ctx.lineWidth = 0.5;
+  // Subtle darker border between cells (secondary wobbly grid)
+  ctx.strokeStyle = 'rgba(100,80,50,0.12)';
+  ctx.lineWidth = 0.4;
   for (let i = 0; i <= size; i++) {
     const pos = i * cellSize + 0.5;
-    ctx.beginPath(); ctx.moveTo(pos, 0); ctx.lineTo(pos, canvas.height); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, pos); ctx.lineTo(canvas.width, pos); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pos, 0);
+    wobblyLine(ctx, pos, 0, pos, canvas.height, 0.012, 8000 + i);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, pos);
+    wobblyLine(ctx, 0, pos, canvas.width, pos, 0.012, 8100 + i);
+    ctx.stroke();
   }
 
   // Build drop & skip maps from animation state
@@ -1125,7 +1255,7 @@ function drawBoard(board, highlightCells = null) {
     const px2 = x2 + (x1 - x2) * ease;
     const py2 = y2 + (y1 - y2) * ease;
     // Clear backgrounds at old positions
-    ctx.fillStyle = '#D7CCC8';
+    ctx.fillStyle = '#F7F2B1';
     ctx.fillRect(x1 + 1, y1 + 1, cellSize - 2, cellSize - 2);
     ctx.fillRect(x2 + 1, y2 + 1, cellSize - 2, cellSize - 2);
     // Draw swapped blocks at interpolated positions
@@ -1157,7 +1287,7 @@ function drawBoard(board, highlightCells = null) {
   // Highlight cells
   if (highlightCells) {
     for (const { r, c } of highlightCells) {
-      ctx.strokeStyle = '#FFD54F';
+      ctx.strokeStyle = '#E1CB6B';
       ctx.lineWidth = Math.max(2, cellSize * 0.06);
       ctx.strokeRect(c * cellSize + 2, r * cellSize + 2, cellSize - 4, cellSize - 4);
     }
@@ -1453,9 +1583,9 @@ const game = {
     if (grainPercent <= 20) {
       grainBar.style.background = 'linear-gradient(90deg, #E53935, #FF5252, #EF5350)';
     } else if (grainPercent <= 40) {
-      grainBar.style.background = 'linear-gradient(90deg, #FF8F00, #FFA000, #FFB300)';
+      grainBar.style.background = 'linear-gradient(90deg, #C4A840, #E1CB6B, #C4A840)';
     } else {
-      grainBar.style.background = 'linear-gradient(90deg, #F9A825, #FFD54F, #FFB300)';
+      grainBar.style.background = 'linear-gradient(90deg, #C4A840 0%, #E1CB6B 30%, #F0DC82 60%, #E1CB6B 100%)';
     }
 
     // Steps warning
@@ -1463,9 +1593,9 @@ const game = {
     if (this.stepsLeft <= 3) {
       stepsEl.style.color = '#FF5252';
     } else if (this.stepsLeft <= 6) {
-      stepsEl.style.color = '#FFB74D';
+      stepsEl.style.color = '#F0DC82';
     } else {
-      stepsEl.style.color = '#FFD54F';
+      stepsEl.style.color = '#F0DC82';
     }
   },
 
@@ -1577,7 +1707,7 @@ const game = {
         if (match.type === BLOCK.LOOSE_SOIL) {
           const cx = match.cells[1].c * cellSize + cellSize / 2;
           const cy = match.cells[1].r * cellSize + cellSize / 2;
-          spawnParticles(cx, cy, 20, '#FFD54F', cellSize * 0.2, 700);
+          spawnParticles(cx, cy, 20, '#F0DC82', cellSize * 0.2, 700);
         }
       }
     } else {
@@ -2046,7 +2176,7 @@ function showLevelIntro(intro, onDismiss) {
       <span style="font-size:28px;">${intro.icon}</span>
     </div>
     <div style="text-align:center;margin-bottom:10px;">
-      <strong style="font-size:16px;color:#FFD54F;">${intro.title}</strong>
+      <strong style="font-size:16px;color:#C4A840;">${intro.title}</strong>
     </div>
     <div style="font-size:13px;line-height:1.85;margin-bottom:12px;">${intro.text}</div>
     <div class="guide-close" id="level-intro-btn">${intro.btn}</div>
@@ -2090,12 +2220,12 @@ function renderBlockPreviews(container, types, highlightType) {
   types.forEach(function(t, i) {
     var x = i * (previewSize + gap);
     drawBlockPreview(pctx, x, 0, previewSize, t.type);
-    pctx.fillStyle = t.type === highlightType ? '#FFD54F' : '#FFF8F0';
+    pctx.fillStyle = t.type === highlightType ? '#F0DC82' : '#FDF8D0';
     pctx.font = 'bold 10px -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif';
     pctx.textAlign = 'center';
     pctx.fillText(t.label, x + previewSize / 2, previewSize + 14);
     if (t.type === highlightType) {
-      pctx.strokeStyle = '#FFD54F';
+      pctx.strokeStyle = '#E1CB6B';
       pctx.lineWidth = 2;
       pctx.setLineDash([3, 2]);
       pctx.strokeRect(x - 1, -1, previewSize + 2, previewSize + 2);
@@ -2259,7 +2389,7 @@ const guideSystem = {
         { type: BLOCK.LOOSE_SOIL, label: '疏松土块' },
         { type: BLOCK.HEALTHY_FARM, label: '健康耕地' }
       ];
-      blockIntroText = '🆕 <strong style="color:#FFD54F;">新增：重金属污染块！</strong><br>紫色毒液纹理，需与其他污染物一样通过三消清除。<br>四重威胁并存，土地修复需要更科学的规划。';
+      blockIntroText = '🆕 <strong style="color:#F0DC82;">新增：重金属污染块！</strong><br>紫色毒液纹理，需与其他污染物一样通过三消清除。<br>四重威胁并存，土地修复需要更科学的规划。';
     } else {
       highlightType = BLOCK.SALINE;
       blockIntroTitle = '方块类型介绍 · 新增盐碱晶';
@@ -2272,7 +2402,7 @@ const guideSystem = {
         { type: BLOCK.LOOSE_SOIL, label: '疏松土块' },
         { type: BLOCK.HEALTHY_FARM, label: '健康耕地' }
       ];
-      blockIntroText = '🆕 <strong style="color:#FFD54F;">新增：盐碱晶！</strong><br>白色冰晶纹理，五种退化全部登场。<br>这是最终的考验——守护每一寸良田！';
+      blockIntroText = '🆕 <strong style="color:#F0DC82;">新增：盐碱晶！</strong><br>白色冰晶纹理，五种退化全部登场。<br>这是最终的考验——守护每一寸良田！';
     }
 
     return [
@@ -2342,7 +2472,7 @@ const guideSystem = {
 
     let innerHTML = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
       '<span style="font-size:20px;">' + step.icon + '</span>' +
-      '<strong style="font-size:14px;color:#FFD54F;">' + step.title + '</strong></div>' +
+      '<strong style="font-size:14px;color:#F0DC82;">' + step.title + '</strong></div>' +
       '<div style="font-size:13px;line-height:1.7;">' + step.text + '</div>';
 
     if (step.isBlockIntro && step.blockTypes) {
@@ -2626,13 +2756,13 @@ const tutorialSystem = {
       html = '<div style="text-align:center;">' +
         '<span style="font-size:28px;">👆</span>' +
         '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
-        '<strong>试试看！</strong><br>拖动这两个<strong style="color:#FFD54F;">高亮闪烁</strong>的方块互换<br>来消除污染物！</div>' +
+        '<strong>试试看！</strong><br>拖动这两个<strong style="color:#F0DC82;">高亮闪烁</strong>的方块互换<br>来消除污染物！</div>' +
         '<div class="guide-close" id="tutorial-skip-btn" style="margin-top:6px;opacity:0.6;font-size:10px;">跳过教程 →</div></div>';
     } else {
       html = '<div style="text-align:center;">' +
         '<span style="font-size:28px;">🌱</span>' +
         '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
-        '<strong>最后一步！</strong><br>交换这两个<strong style="color:#FFD54F;">疏松土块</strong><br>复耕第一块健康耕地！</div>' +
+        '<strong>最后一步！</strong><br>交换这两个<strong style="color:#F0DC82;">疏松土块</strong><br>复耕第一块健康耕地！</div>' +
         '<div class="guide-close" id="tutorial-skip-btn" style="margin-top:6px;opacity:0.6;font-size:10px;">跳过教程 →</div></div>';
     }
 
@@ -2735,7 +2865,7 @@ const tutorialSystem = {
     const arrowAlpha = 0.5 + 0.5 * Math.sin(now / 300);
     ctx.save();
     ctx.globalAlpha = arrowAlpha;
-    ctx.fillStyle = '#FFD54F';
+    ctx.fillStyle = '#F0DC82';
     ctx.font = (cs * 0.55) + 'px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
