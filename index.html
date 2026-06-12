@@ -1192,6 +1192,13 @@ const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 let canvasLogicalSize = 0;  // logical pixel size of the board canvas (CSS pixels)
 
+// Legacy globals — declared BEFORE preloader so they are always in scope
+let boardBgReady = false;
+let boardBgImage = null;
+let beijingImage = null;
+const blockImages = {};
+let blockImagesReady = false;
+
 	// ── Unified Preloader: track all images, show progress, then start game ──
 	const PRELOAD_IMAGES = [
 	  { key: 'beijing',    src: 'beijing.png',          type: 'bg' },
@@ -1237,10 +1244,21 @@ let canvasLogicalSize = 0;  // logical pixel size of the board canvas (CSS pixel
 
 	function markImageLoaded(key, img) {
 	  try {
+	    // Always store valid images — even if counted (replaces null from fail-safe)
+	    if (img && img.complete && img.naturalWidth > 0) {
+	      loadedImages[key] = img;
+	      // If game already started, update live structures immediately
+	      if (preloadGameStarted) {
+	        updateLiveImageRefs(key, img);
+	      }
+	    }
 	    if (preloadCounted.has(key)) return;  // already counted — skip
 	    preloadCounted.add(key);
 	    preloadDone++;
-	    loadedImages[key] = img;
+	    // Only store null for images that truly failed
+	    if (!img || !img.complete || img.naturalWidth <= 0) {
+	      loadedImages[key] = null;
+	    }
 	    updatePreloaderProgress();
 	    if (preloadDone >= preloadTotal) {
 	      onAllImagesReady();
@@ -1283,21 +1301,14 @@ let canvasLogicalSize = 0;  // logical pixel size of the board canvas (CSS pixel
 	}
 
 
-	// ── Failsafe: if any image stalls, force-complete after 6s ──
+	// ── Failsafe: force-start after 6s even if images haven't loaded ──
+	// Images keep loading in background and appear as they arrive (via updateLiveImageRefs)
 	let preloadFailsafeTimer = setTimeout(function() {
 	  if (preloadAllReady) return;
-	  // Count any images that haven't been counted yet (stalled)
-	  for (let i = 0; i < PRELOAD_IMAGES.length; i++) {
-	    if (!preloadCounted.has(PRELOAD_IMAGES[i].key)) {
-	      markImageLoaded(PRELOAD_IMAGES[i].key, null);
-	    }
-	  }
-	  // If still not ready after force-counting, start anyway
-	  if (!preloadAllReady) {
-	    preloadAllReady = true;
-	    clearTimeout(preloadFailsafeTimer);
-	    finishPreloaderAndStart();
-	  }
+	  preloadAllReady = true;
+	  clearTimeout(preloadFailsafeTimer);
+	  clearTimeout(preloadSkipTimer);
+	  finishPreloaderAndStart();
 	}, 6000);
 
 
@@ -1362,6 +1373,26 @@ let canvasLogicalSize = 0;  // logical pixel size of the board canvas (CSS pixel
 	  }, 300);
 	}
 
+	// ── Late image arrival handler: updates live structures when images load after game start ──
+	function updateLiveImageRefs(key, img) {
+	  try {
+	    var item = PRELOAD_IMAGES.find(function(i) { return i.key === key; });
+	    if (!item) return;
+	    if (item.type === 'block') {
+	      blockImages[item.blockType] = img;
+	    } else if (key === 'qipan') {
+	      boardBgImage = img;
+	      boardBgReady = true;
+	    } else if (key === 'beijing') {
+	      beijingImage = img;
+	      try { document.body.style.backgroundImage = "url('" + img.src + "')"; } catch(e) {}
+	    }
+	    // Trigger re-render so newly arrived image appears immediately
+	    if (typeof game !== 'undefined' && game && game.board) {
+	      triggerRender(game.board);
+	    }
+	  } catch(e) {}
+	}
 
 	function onAllImagesReady() {
 	  if (preloadAllReady) return;
@@ -1370,12 +1401,6 @@ let canvasLogicalSize = 0;  // logical pixel size of the board canvas (CSS pixel
 	  clearTimeout(preloadSkipTimer);
 	  finishPreloaderAndStart();
 	}
-// Legacy globals (set by onAllImagesReady)
-let boardBgReady = false;
-let boardBgImage = null;
-let beijingImage = null;
-const blockImages = {};
-let blockImagesReady = false;
 
 // ── UI Background Canvases ──
 const topCanvas = document.getElementById('top-canvas');
