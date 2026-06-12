@@ -69,7 +69,9 @@
     visibility: hidden; /* Canvas draws the grain bar behind */
   }
   #grain-bar-inner { visibility: hidden; }
-  #grain-bar-label { font-size: 10px; font-weight: 600; color: #F0DC82; white-space: nowrap; min-width: 42px; text-align: right; text-shadow: 0 1px 3px rgba(30,15,5,0.45); }
+  #grain-bar-label { font-size: 10px; font-weight: 600; color: #F0DC82; white-space: nowrap; min-width: 52px; text-align: right; text-shadow: 0 1px 3px rgba(30,15,5,0.45); }
+#grain-bar-label.grain-urgent { animation: pulseRed 0.5s ease-in-out infinite alternate; color: #FF5252; }
+@keyframes pulseRed { from { opacity: 1; } to { opacity: 0.5; } }
   #board-wrapper {
     position: relative;
     border-radius: 10px; padding: 6px; box-shadow: 0 4px 16px rgba(30,15,5,0.30);
@@ -367,7 +369,7 @@
       <div id="grain-bar-wrapper">
         <div id="farmer-avatar">👨‍🌾</div>
         <div id="grain-bar-outer"><div id="grain-bar-inner" style="width:100%"></div></div>
-        <span id="grain-bar-label">粮食 100%</span>
+        <span id="grain-bar-label">⏱ 10:00</span>
       </div>
     </div>
   </div>
@@ -481,8 +483,8 @@ const BLOCK_ICONS = {
 
 const LEVELS = [
   {
-    name: '复苏之风', size: 6, target: 6, steps: 30,
-    grainInit: 100, grainPenalty: 10, grainGain: 15,
+    name: '复苏之风', size: 6, target: 6, steps: 33,
+    totalTime: 600, grainInit: 100, invalidPenalty: 5, reclaimBonus: 3,
     pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC],
     looseSoilInit: [3, 4], hasGuide: true,
     intro: {
@@ -494,19 +496,20 @@ const LEVELS = [
 这片土地正遭受<strong>三种退化</strong>：
 <br>🪨 板结块 · 🏜️ 沙化块 · 🦠 有机污染物
 <br><br>
-📊 粮食储备 <strong style="color:#66BB6A;">100%</strong>，开局粮仓充足。
+⏱ 修复时间 <strong style="color:#66BB6A;">10分钟</strong>，时间充裕。
+<br>⚠️ 无效移动扣除 <strong>5%</strong> 时间 · 🌱 成功复耕奖励 <strong>+3秒</strong>
 <br>
-🎯 目标：复耕 <strong style="color:#66BB6A;">6</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>30</strong> 步
+🎯 目标：复耕 <strong style="color:#66BB6A;">6</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>33</strong> 步
 <br><br>
 <em>让我们从「复苏之风」开始，唤醒沉睡的土地！</em>`,
       btn: '🌱 开始守护'
     }
   },
   {
-    name: '大地疗愈', size: 7, target: 9, steps: 18,
-    grainInit: 60, grainPenalty: 10, grainGain: 8,
+    name: '大地疗愈', size: 7, target: 8, steps: 23,
+    totalTime: 80, grainInit: 80, invalidPenalty: 5, reclaimBonus: 3,
     pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC, BLOCK.HEAVY_METAL],
-    looseSoilInit: [2, 3], hasGuide: false,
+    looseSoilInit: [2, 2], hasGuide: false,
     intro: {
       title: '第二关 · 大地疗愈',
       icon: '🏥',
@@ -515,17 +518,18 @@ const LEVELS = [
 </div>
 土地遭受了更复杂的<strong>化学污染</strong>，板结、沙化、有机物、重金属<strong>四重威胁并存</strong>。
 <br><br>
-📊 粮食储备仅剩 <strong style="color:#FFA726;">60%</strong>，每一步都需精打细算。
+⏱ 修复时间仅 <strong style="color:#FFA726;">80秒</strong>，分秒必争！
+<br>⚠️ 无效移动扣除 <strong>5%</strong> 时间 · 🌱 成功复耕奖励 <strong>+3秒</strong>
 <br>
-🎯 目标：复耕 <strong style="color:#66BB6A;">9</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>18</strong> 步
+🎯 目标：复耕 <strong style="color:#66BB6A;">8</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>23</strong> 步
 <br><br>
 <em>准备好了吗？开始「大地疗愈」的征程！</em>`,
       btn: '💪 接受挑战'
     }
   },
   {
-    name: '沃野守卫', size: 8, target: 13, steps: 55,
-    grainInit: 33, grainPenalty: 10, grainGain: 3,
+    name: '沃野守卫', size: 8, target: 12, steps: 50,
+    totalTime: 120, grainInit: 60, invalidPenalty: 5, reclaimBonus: 3,
     pollutants: [BLOCK.COMPACTION, BLOCK.DESERT, BLOCK.ORGANIC, BLOCK.HEAVY_METAL, BLOCK.SALINE],
     looseSoilInit: [2, 2], hasGuide: false,
     intro: {
@@ -537,9 +541,10 @@ const LEVELS = [
 <strong>五种土地退化类型全部登场！</strong>
 <br>板结 · 沙化 · 有机物 · 重金属 · 盐碱
 <br><br>
-📊 粮食储备仅剩 <strong style="color:#EF5350;">33%</strong>，但步数充足，仔细规划每一次操作！
+⏱ 修复时间仅 <strong style="color:#EF5350;">120秒</strong>，步数充足但时间紧迫！
+<br>⚠️ 无效移动扣除 <strong>5%</strong> 时间 · 🌱 成功复耕奖励 <strong>+3秒</strong>
 <br>
-🎯 目标：复耕 <strong style="color:#66BB6A;">13</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>55</strong> 步
+🎯 目标：复耕 <strong style="color:#66BB6A;">12</strong> 块健康耕地 &nbsp;|&nbsp; 👣 步数：<strong>50</strong> 步
 <br><br>
 <em>这是最后的挑战——守护每一寸良田！</em>`,
       btn: '⚔️ 迎接挑战'
@@ -1456,13 +1461,18 @@ function drawTopBarCanvas() {
   const cfg = gameData.levelConfig || LEVELS[0];
   const grainPercent = Math.max(0, (gameData.grainReserve !== undefined ? gameData.grainReserve : 100));
   const grainRatio = grainPercent / 100;
+  const drainRate = (gameData.drainRate !== undefined ? gameData.drainRate : 0.1667);
+  const displaySec = Math.max(0, Math.ceil(grainPercent / (drainRate || 0.1667)));
+  const dMins = Math.floor(displaySec / 60);
+  const dSecs = displaySec % 60;
+  const timeDisplay = dMins + ':' + String(dSecs).padStart(2, '0');
 
   drawStatCard(topCtx, 1, cardY, cardW - 3, cardH, '🌱', '复耕进度',
     (gameData.reclaimedCount || 0) + '/' + (gameData.target || cfg.target || 6), '#66BB6A', 30);
   drawStatCard(topCtx, cardW + 4, cardY, cardW - 3, cardH, '👣', '剩余步数',
     String(gameData.stepsLeft !== undefined ? gameData.stepsLeft : (cfg.steps || 30)), '#8D6E63', 31);
-  drawStatCard(topCtx, (cardW + 4) * 2, cardY, cardW - 3, cardH, '🌾', '粮食储备',
-    Math.round(grainPercent) + '%', PALETTE.gold, 32);
+  drawStatCard(topCtx, (cardW + 4) * 2, cardY, cardW - 3, cardH, '⏱', '剩余时间',
+    timeDisplay, PALETTE.gold, 32);
 
   // Grain progress bar
   const progY = cardY + cardH + 5;
@@ -1861,6 +1871,7 @@ function drawBoard(board, highlightCells = null) {
 
 // --- Particle System ---
 let particles = [];
+let floatTexts = [];
 let animFrameId = null;
 
 function spawnParticles(cx, cy, count, color, spread, life) {
@@ -1918,12 +1929,42 @@ function drawParticles() {
   ctx.globalAlpha = 1;
 }
 
+// --- Float Text System ---
+function spawnFloatText(x, y, text, color) {
+  floatTexts.push({ x: x, y: y, text: text, color: color, life: 1.0, startTime: performance.now(), duration: 1200 });
+}
+
+function updateFloatTexts(dt) {
+  for (let i = floatTexts.length - 1; i >= 0; i--) {
+    const ft = floatTexts[i];
+    const elapsed = performance.now() - ft.startTime;
+    ft.life = Math.max(0, 1 - elapsed / ft.duration);
+    ft.y -= 30 * (dt / 1000);
+    if (ft.life <= 0) floatTexts.splice(i, 1);
+  }
+}
+
+function drawFloatTexts(pctx) {
+  for (const ft of floatTexts) {
+    pctx.save();
+    pctx.globalAlpha = ft.life;
+    pctx.fillStyle = ft.color;
+    pctx.font = 'bold 18px "Noto Serif SC", "Source Han Serif SC", serif';
+    pctx.textAlign = 'center';
+    pctx.shadowColor = 'rgba(0,0,0,0.3)';
+    pctx.shadowBlur = 3;
+    pctx.fillText(ft.text, ft.x, ft.y);
+    pctx.restore();
+  }
+}
+
 // --- Render loop ---
 let renderBoard = null;
 let renderHighlights = null;
 
 function hasActiveAnimations() {
   return particles.length > 0 ||
+    floatTexts.length > 0 ||
     game.state === 'animating' ||
     animState.swap !== null ||
     animState.elim !== null ||
@@ -1940,6 +1981,7 @@ function startRenderLoop() {
     lastTime = time;
 
     updateParticles(dt);
+    updateFloatTexts(dt);
 
     // Clean stale bounces
     const now = performance.now();
@@ -1955,6 +1997,7 @@ function startRenderLoop() {
     if (renderBoard) {
       drawBoard(renderBoard, renderHighlights);
       drawParticles();
+      drawFloatTexts(ctx);
     }
 
     if (hasActiveAnimations()) {
@@ -1964,6 +2007,7 @@ function startRenderLoop() {
       // Final render to clean up
       if (renderBoard) {
         drawBoard(renderBoard, renderHighlights);
+        drawFloatTexts(ctx);
       }
     }
   }
@@ -1984,6 +2028,7 @@ function triggerRender(board, highlights = null) {
   // Draw immediately
   drawBoard(board, highlights);
   drawParticles();
+  drawFloatTexts(ctx);
   // Continue loop if animations active
   if (!animFrameId && (particles.length > 0 || game.state === 'animating')) {
     startRenderLoop();
@@ -2087,12 +2132,20 @@ const game = {
   levelConfig: null,
   state: STATE.IDLE,
   selectedCell: null,
+  drainRate: 0,
+  totalTime: 0,
+  timerInterval: null,
+  timerPaused: false,
   stats: loadStats(),
 
   initLevel(levelNum) {
     this.levelNum = levelNum;
     this.levelConfig = LEVELS[levelNum - 1];
     const cfg = this.levelConfig;
+
+    // Calculate drain rate: grainInit% drained over totalTime seconds
+    this.drainRate = cfg.grainInit / cfg.totalTime;
+    this.totalTime = cfg.totalTime;
 
     this.board = createBoard(cfg.size, cfg.pollutants, cfg.looseSoilInit);
     this.stepsLeft = cfg.steps;
@@ -2101,6 +2154,9 @@ const game = {
     this.target = cfg.target;
     this.state = STATE.IDLE;
     this.selectedCell = null;
+
+    // Start the real-time countdown timer
+    this.startTimer();
 
     resizeCanvas(cfg.size);
     this.render();
@@ -2118,7 +2174,13 @@ const game = {
     buildBlockLegend(levelNum);
 
     if (cfg.intro) {
-      showLevelIntro(cfg.intro, cfg.hasGuide ? () => guideSystem.start() : null);
+      // Pause timer during level intro popup
+      this.pauseTimer();
+      const onIntroDismiss = () => {
+        this.resumeTimer();
+        if (cfg.hasGuide) guideSystem.start();
+      };
+      showLevelIntro(cfg.intro, onIntroDismiss);
     } else if (cfg.hasGuide) {
       guideSystem.start();
     }
@@ -2134,21 +2196,29 @@ const game = {
     document.getElementById('reclaim-progress').textContent = this.reclaimedCount + '/' + this.target;
     document.getElementById('steps-left').textContent = this.stepsLeft;
 
-    // Grain bar
+    // Time countdown bar
     const grainPercent = Math.max(0, this.grainReserve);
     const grainBar = document.getElementById('grain-bar-inner');
     grainBar.style.width = grainPercent + '%';
-    document.getElementById('grain-bar-label').textContent = '粮食 ' + Math.round(grainPercent) + '%';
 
-    // Color warning when low
+    // Display remaining time in M:SS format
+    const remainingSec = Math.max(0, Math.ceil(this.grainReserve / (this.drainRate || 0.1667)));
+    const mins = Math.floor(remainingSec / 60);
+    const secs = remainingSec % 60;
+    const timeLabel = document.getElementById('grain-bar-label');
+    timeLabel.textContent = '⏱ ' + mins + ':' + String(secs).padStart(2, '0');
+
+    // Color warning when low on time
     if (grainPercent <= 20) {
       grainBar.style.background = 'linear-gradient(180deg, #FF5252 0%, #E53935 50%, #C62828 100%)';
+      timeLabel.classList.add('grain-urgent');
     } else if (grainPercent <= 40) {
       grainBar.style.background = 'linear-gradient(180deg, #F0DC82 0%, #E1CB6B 50%, #C4A840 100%)';
+      timeLabel.classList.remove('grain-urgent');
     } else {
       grainBar.style.background = 'linear-gradient(180deg, #F0DC82 0%, #E1CB6B 35%, #C4A840 70%, #A88920 100%)';
+      timeLabel.classList.remove('grain-urgent');
     }
-
     // Steps warning
     const stepsEl = document.getElementById('steps-left');
     if (this.stepsLeft <= 3) {
@@ -2161,6 +2231,35 @@ const game = {
 
     // Redraw hand-drawn top bar canvas
     drawTopBarCanvas();
+  },
+
+  // ── Real-time countdown timer ──
+  startTimer() {
+    this.stopTimer();
+    this.timerPaused = false;
+    this.timerInterval = setInterval(() => {
+      if (this.state === STATE.GAME_OVER || this.timerPaused) return;
+      this.grainReserve = Math.max(0, this.grainReserve - this.drainRate * 0.1);
+      this.updateUI();
+      if (this.grainReserve <= 0) {
+        this.stopTimer();
+        this.checkLose();
+      }
+    }, 100);
+  },
+
+  stopTimer() {
+    if (this.timerInterval) { clearInterval(this.timerInterval); this.timerInterval = null; }
+  },
+
+  pauseTimer() { this.timerPaused = true; },
+  resumeTimer() { this.timerPaused = false; },
+
+  addTime(seconds) {
+    // Convert seconds to reserve percentage using the level's drain rate
+    const gain = this.drainRate * seconds;
+    this.grainReserve = Math.min(100, this.grainReserve + gain);
+    this.updateUI();
   },
 
   async handleSwap(r1, c1, r2, c2) {
@@ -2213,8 +2312,12 @@ const game = {
       // Invalid move — revert
       this.board = originalBoard;
       this.stepsLeft--;
-      this.grainReserve = Math.max(0, this.grainReserve - this.levelConfig.grainPenalty);
+      this.grainReserve = Math.max(0, this.grainReserve - this.levelConfig.invalidPenalty);
       sfxInvalid();
+      // Spawn penalty float text
+      const boardCX = boardMargin + (this.board.length * cellSize) / 2;
+      const boardCY = boardMargin + (this.board.length * cellSize) / 2;
+      spawnFloatText(boardCX, boardCY - 20, '-' + this.levelConfig.invalidPenalty + '%', '#FF5252');
       this.render();
       this.updateUI();
 
@@ -2261,8 +2364,15 @@ const game = {
     this.board = result.board;
     this.reclaimedCount += result.reclaimedCount;
 
-    const grainGain = result.reclaimedCount * this.levelConfig.grainGain;
-    this.grainReserve = Math.min(100, this.grainReserve + grainGain);
+    // Reclamation time bonus: +3 seconds per reclaimed block
+    if (result.reclaimedCount > 0) {
+      const bonusSec = this.levelConfig.reclaimBonus * result.reclaimedCount;
+      this.addTime(bonusSec);
+      // Spawn green bonus float text
+      const boardCX = boardMargin + (this.board.length * cellSize) / 2;
+      const boardCY = boardMargin + (this.board.length * cellSize) / 2;
+      spawnFloatText(boardCX, boardCY - 40, '+' + bonusSec + '秒', '#66BB6A');
+    }
 
     if (result.reclaimedCount > 0) {
       sfxReclaim();
@@ -2363,6 +2473,7 @@ const game = {
   checkWin() {
     if (this.reclaimedCount >= this.target) {
       this.state = STATE.GAME_OVER;
+      this.stopTimer();
       sfxWin();
 
       // Update stats
@@ -2388,14 +2499,16 @@ const game = {
   checkLose() {
     if (this.stepsLeft <= 0) {
       this.state = STATE.GAME_OVER;
+      this.stopTimer();
       sfxLose();
       setTimeout(() => showPopup('lose', '步数耗尽！土地修复的窗口期已过，请重新规划。'), 400);
       return true;
     }
     if (this.grainReserve <= 0) {
       this.state = STATE.GAME_OVER;
+      this.stopTimer();
       sfxLose();
-      setTimeout(() => showPopup('lose', '粮食储备归零！没有足够的粮食支撑修复工作，请重新开始。'), 400);
+      setTimeout(() => showPopup('lose', '修复时间耗尽！倒计时归零，土地修复的窗口期已过。'), 400);
       return true;
     }
     return false;
@@ -2826,9 +2939,10 @@ const guideSystem = {
     const levelName = cfg.name;
     const target = cfg.target;
     const stepsCount = cfg.steps;
+    const totalTime = cfg.totalTime;
     const grainInit = cfg.grainInit;
-    const grainGain = cfg.grainGain;
-    const grainPenalty = cfg.grainPenalty;
+    const invalidPenalty = cfg.invalidPenalty;
+    const reclaimBonus = cfg.reclaimBonus;
 
     let blockIntroTypes, blockIntroText, blockIntroTitle, highlightType;
     if (lv === 1) {
@@ -2885,15 +2999,10 @@ const guideSystem = {
         text: '👣 <strong>剩余步数</strong>：本关共 <strong>' + stepsCount + '步</strong>。<br>每次交换消耗1步（无论是否有效）。<br>步数用尽且未达标 → 闯关失败！',
         icon: '👣', arrow: 'down'
       },
-      {
-        title: '粮食储备条', target: 'grain-bar-wrapper',
-        text: '🌾 <strong>粮食储备条</strong>：当前 <strong>' + grainInit + '%</strong>。<br>· 无效移动扣减 <strong>' + grainPenalty + '%</strong><br>· 成功复耕增加 <strong>' + grainGain + '%</strong><br>· 储备归零 → 立即失败！',
-        icon: '🍞', arrow: 'up'
-      },
-      {
-        title: '农民伯伯', target: 'farmer-avatar',
-        text: '👨‍🌾 这位是<strong>农民伯伯</strong>！\n他守护着我们的粮食储备。\n粮食储备条越低，他的表情越焦急…',
-        icon: '👨‍🌾', arrow: 'up'
+            {
+        title: '实时倒计时', target: 'grain-bar-wrapper',
+        text: '⏱ <strong>实时倒计时</strong>：本关共 <strong>' + totalTime + '秒</strong>。<br>· 每秒持续流失时间<br>· 无效移动扣除 <strong>' + invalidPenalty + '%</strong><br>· 成功复耕奖励 <strong>+' + reclaimBonus + '秒</strong><br>· 时间归零 → 立即失败！',
+        icon: '⏱', arrow: 'up'
       },
       {
         title: blockIntroTitle, target: 'board-wrapper',
@@ -2909,48 +3018,29 @@ const guideSystem = {
     ];
   },
 
-  start() {
-    if (this.completed) return;
-    this.stepIdx = -1;
-    this.firstMatchDone = false;
-    this.firstReclaimDone = false;
-    this.waitingForSwap = false;
-    this.steps = this.buildSteps();
-    this.timer = setTimeout(() => this.next(), 600);
-  },
+  show(step) {
+    if (!step) return;
+    this.activeStep = step;
+    const el = step.target ? document.getElementById(step.target) : null;
+    this.tooltip.querySelector('#guide-step-title').textContent = step.title || '';
+    this.tooltip.querySelector('#guide-step-text').innerHTML = step.text || '';
+    const iconEl = this.tooltip.querySelector('#guide-step-icon');
+    if (step.icon) { iconEl.textContent = step.icon; iconEl.style.display = 'block'; }
+    else { iconEl.style.display = 'none'; }
 
-  next() {
-    clearTimeout(this.timer);
-    this.stepIdx++;
-    if (this.stepIdx >= this.steps.length) {
-      this.finish();
-      return;
-    }
-    this.show(this.stepIdx);
-  },
-
-  show(idx) {
-    const step = this.steps[idx];
-    const el = document.getElementById(step.target);
-    if (!el) { this.next(); return; }
-
-    let innerHTML = '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
-      '<span style="font-size:20px;">' + step.icon + '</span>' +
-      '<strong style="font-size:14px;color:#F0DC82;">' + step.title + '</strong></div>' +
-      '<div style="font-size:13px;line-height:1.7;">' + step.text + '</div>';
-
-    if (step.isBlockIntro && step.blockTypes) {
-      innerHTML += '<div id="block-preview-container" style="margin-top:10px;"></div>';
-    }
-
-    innerHTML += '<div class="guide-close" id="guide-next-btn">👉 知道了，继续</div>';
-    this.tooltip.innerHTML = innerHTML;
-
-    if (step.isBlockIntro && step.blockTypes) {
-      const container = document.getElementById('block-preview-container');
-      if (container) {
-        renderBlockPreviews(container, step.blockTypes, step.highlightType);
+    // Render block previews if this is a block-intro step
+    const previewContainer = this.tooltip.querySelector('#guide-block-previews');
+    if (previewContainer) {
+      previewContainer.innerHTML = '';
+      if (step.isBlockIntro && step.blockTypes && step.blockTypes.length > 0) {
+        renderBlockPreviews(previewContainer, step.blockTypes, step.highlightType);
+        previewContainer.style.display = 'flex';
+      } else {
+        previewContainer.style.display = 'none';
       }
+    }
+
+    if (step.isBoard) {
       this.tooltip.style.maxWidth = '340px';
     } else {
       this.tooltip.style.maxWidth = '260px';
