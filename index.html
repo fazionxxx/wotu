@@ -1192,110 +1192,184 @@ const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 let canvasLogicalSize = 0;  // logical pixel size of the board canvas (CSS pixels)
 
-// ── Unified Preloader: track all images, show progress, then start game ──
-const PRELOAD_IMAGES = [
-  { key: 'beijing',    src: 'beijing.png',          type: 'bg' },
-  { key: 'qipan',      src: 'qipan.png',            type: 'board' },
-  { key: 'banjie',     src: 'banjie.png',           type: 'block', blockType: BLOCK.COMPACTION },
-  { key: 'zhongjinshu',src: 'zhongjinshu.png',      type: 'block', blockType: BLOCK.HEAVY_METAL },
-  { key: 'youji',      src: 'youji.png',            type: 'block', blockType: BLOCK.ORGANIC },
-  { key: 'shahua',     src: 'shahua.png',           type: 'block', blockType: BLOCK.DESERT },
-  { key: 'yanjian',    src: 'yanjian.png',          type: 'block', blockType: BLOCK.SALINE },
-  { key: 'shusongtukuai', src: 'shusongtukuai.png', type: 'block', blockType: BLOCK.LOOSE_SOIL },
-  { key: 'jiankanggengdi', src: 'jiankanggengdi.png', type: 'block', blockType: BLOCK.HEALTHY_FARM },
-];
+	// ── Unified Preloader: track all images, show progress, then start game ──
+	const PRELOAD_IMAGES = [
+	  { key: 'beijing',    src: 'beijing.png',          type: 'bg' },
+	  { key: 'qipan',      src: 'qipan.png',            type: 'board' },
+	  { key: 'banjie',     src: 'banjie.png',           type: 'block', blockType: BLOCK.COMPACTION },
+	  { key: 'zhongjinshu',src: 'zhongjinshu.png',      type: 'block', blockType: BLOCK.HEAVY_METAL },
+	  { key: 'youji',      src: 'youji.png',            type: 'block', blockType: BLOCK.ORGANIC },
+	  { key: 'shahua',     src: 'shahua.png',           type: 'block', blockType: BLOCK.DESERT },
+	  { key: 'yanjian',    src: 'yanjian.png',          type: 'block', blockType: BLOCK.SALINE },
+	  { key: 'shusongtukuai', src: 'shusongtukuai.png', type: 'block', blockType: BLOCK.LOOSE_SOIL },
+	  { key: 'jiankanggengdi', src: 'jiankanggengdi.png', type: 'block', blockType: BLOCK.HEALTHY_FARM },
+	];
 
-const loadedImages = {};     // key → Image element
-const preloadCounted = new Set();  // prevent double-counting cached images
-let preloadTotal = PRELOAD_IMAGES.length;
-let preloadDone = 0;
-let preloadAllReady = false;
 
-const preloaderBar = document.getElementById('preloader-bar');
-const preloaderText = document.getElementById('preloader-text');
-const preloaderScreen = document.getElementById('preloader');
+	const loadedImages = {};     // key → Image element
+	const preloadCounted = new Set();  // prevent double-counting cached images
+	let preloadTotal = PRELOAD_IMAGES.length;
+	let preloadDone = 0;
+	let preloadAllReady = false;
+	let preloadGameStarted = false;  // guard against double-start
 
-function updatePreloaderProgress() {
-  const pct = Math.round((preloadDone / preloadTotal) * 100);
-  if (preloaderBar) preloaderBar.style.width = pct + '%';
-  if (preloaderText) preloaderText.textContent = '正在加载素材... ' + pct + '%';
-}
 
-function markImageLoaded(key, img) {
-  if (preloadCounted.has(key)) return;  // already counted — skip
-  preloadCounted.add(key);
-  preloadDone++;
-  loadedImages[key] = img;
-  updatePreloaderProgress();
-  if (preloadDone >= preloadTotal) {
-    onAllImagesReady();
-  }
-}
+	const preloaderBar = document.getElementById('preloader-bar');
+	const preloaderText = document.getElementById('preloader-text');
+	const preloaderScreen = document.getElementById('preloader');
 
-PRELOAD_IMAGES.forEach((item) => {
-  const img = new Image();
-  img.onload = () => {
-    console.log('Loaded: ' + item.src + ' (' + (preloadCounted.size) + '/' + preloadTotal + ')');
-    markImageLoaded(item.key, img);
-  };
-  img.onerror = () => {
-    console.warn('Failed to load: ' + item.src);
-    markImageLoaded(item.key, null);  // count failures too, so preloader doesn't stall
-  };
-  img.src = item.src;
-  // Handle cached images (complete before onload fires)
-  if (img.complete && img.naturalWidth > 0) {
-    console.log('Cached: ' + item.src + ' (' + (preloadCounted.size + 1) + '/' + preloadTotal + ')');
-    markImageLoaded(item.key, img);
-  }
-});
 
-  // Failsafe: if any image stalls (neither onload nor onerror fires), force-complete after 8s
-  let preloadFailsafeTimer = setTimeout(() => {
-    if (preloadAllReady) return;
-    console.warn('Preloader failsafe triggered — ' + preloadDone + '/' + preloadTotal + ' images counted, forcing completion');
-    // Count any images that haven't been counted yet (stalled)
-    PRELOAD_IMAGES.forEach((item) => {
-      if (!preloadCounted.has(item.key)) {
-        console.warn('  Forcing: ' + item.key);
-        markImageLoaded(item.key, null);
-      }
-    });
-  }, 8000);
+	// ── Diagnostic: confirm script is running ──
+	try {
+	  if (preloaderText) preloaderText.textContent = '正在初始化...';
+	  if (preloaderBar) preloaderBar.style.width = '2%';
+	} catch(e) {}
 
-function onAllImagesReady() {
-  if (preloadAllReady) return;
-  preloadAllReady = true;
-  clearTimeout(preloadFailsafeTimer);
-  console.log('All images loaded — starting game');
 
-  // Populate legacy references for backward compatibility
-  boardBgImage = loadedImages['qipan'] || null;
-  boardBgReady = !!loadedImages['qipan'];
-  beijingImage = loadedImages['beijing'] || null;
+	function updatePreloaderProgress() {
+	  try {
+	    const pct = Math.round((preloadDone / preloadTotal) * 100);
+	    if (preloaderBar) preloaderBar.style.width = pct + '%';
+	    if (preloaderText) preloaderText.textContent = '正在加载素材... ' + pct + '%';
+	  } catch(e) {}
+	}
 
-  // Build blockImages map
-  PRELOAD_IMAGES.filter(i => i.type === 'block').forEach((item) => {
-    if (loadedImages[item.key]) {
-      blockImages[item.blockType] = loadedImages[item.key];
-    }
-  });
-  blockImagesReady = true;
 
-  // Apply beijing background
-  if (loadedImages['beijing']) {
-    document.body.style.backgroundImage = "url('" + loadedImages['beijing'].src + "')";
-  }
+	function markImageLoaded(key, img) {
+	  try {
+	    if (preloadCounted.has(key)) return;  // already counted — skip
+	    preloadCounted.add(key);
+	    preloadDone++;
+	    loadedImages[key] = img;
+	    updatePreloaderProgress();
+	    if (preloadDone >= preloadTotal) {
+	      onAllImagesReady();
+	    }
+	  } catch(e) {
+	    // If markImageLoaded itself crashes, force-complete
+	    preloadDone = preloadTotal;
+	    updatePreloaderProgress();
+	    onAllImagesReady();
+	  }
+	}
 
-  // Wait a brief moment for the progress bar to show 100%, then transition
-  setTimeout(() => {
-    if (preloaderScreen) {
-      preloaderScreen.classList.add('hidden');
-    }
-    startGame();
-  }, 400);
-}
 
+	// ── Start loading images (wrapped in try-catch) ──
+	try {
+	  PRELOAD_IMAGES.forEach((item) => {
+	    try {
+	      const img = new Image();
+	      img.onload = function() {
+	        try { markImageLoaded(item.key, img); } catch(e) { markImageLoaded(item.key, null); }
+	      };
+	      img.onerror = function() {
+	        try { markImageLoaded(item.key, null); } catch(e) { markImageLoaded(item.key, null); }
+	      };
+	      img.src = item.src;
+	      // Handle cached images (complete before onload fires)
+	      if (img.complete && img.naturalWidth > 0) {
+	        markImageLoaded(item.key, img);
+	      }
+	    } catch(e) {
+	      // Individual image init failed — count it and move on
+	      markImageLoaded(item.key, null);
+	    }
+	  });
+	} catch(e) {
+	  // Entire forEach failed — force all as failed
+	  for (let i = 0; i < preloadTotal; i++) {
+	    markImageLoaded(PRELOAD_IMAGES[i].key, null);
+	  }
+	}
+
+
+	// ── Failsafe: if any image stalls, force-complete after 6s ──
+	let preloadFailsafeTimer = setTimeout(function() {
+	  if (preloadAllReady) return;
+	  // Count any images that haven't been counted yet (stalled)
+	  for (let i = 0; i < PRELOAD_IMAGES.length; i++) {
+	    if (!preloadCounted.has(PRELOAD_IMAGES[i].key)) {
+	      markImageLoaded(PRELOAD_IMAGES[i].key, null);
+	    }
+	  }
+	  // If still not ready after force-counting, start anyway
+	  if (!preloadAllReady) {
+	    preloadAllReady = true;
+	    clearTimeout(preloadFailsafeTimer);
+	    finishPreloaderAndStart();
+	  }
+	}, 6000);
+
+
+	// ── Skip button: appears after 3s if not done ──
+	let preloadSkipTimer = setTimeout(function() {
+	  if (preloadAllReady) return;
+	  // Add a skip button to the preloader card
+	  var card = document.querySelector('.preloader-card');
+	  if (card && !document.getElementById('preloader-skip')) {
+	    var skipBtn = document.createElement('button');
+	    skipBtn.id = 'preloader-skip';
+	    skipBtn.textContent = '跳过 ›';
+	    skipBtn.style.cssText = 'margin-top:14px;padding:8px 28px;border:2px solid rgba(67,37,10,0.3);border-radius:20px;background:rgba(196,168,64,0.25);color:#3E2410;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:1px;';
+	    skipBtn.onclick = function() {
+	      if (preloadAllReady) return;
+	      preloadAllReady = true;
+	      clearTimeout(preloadFailsafeTimer);
+	      clearTimeout(preloadSkipTimer);
+	      finishPreloaderAndStart();
+	    };
+	    card.appendChild(skipBtn);
+	  }
+	}, 3000);
+
+
+	function finishPreloaderAndStart() {
+	  if (preloadGameStarted) return;
+	  preloadGameStarted = true;
+
+
+	  // Populate legacy references / blockImages from whatever loaded
+	  boardBgImage = loadedImages['qipan'] || null;
+	  boardBgReady = !!loadedImages['qipan'];
+	  beijingImage = loadedImages['beijing'] || null;
+
+
+	  PRELOAD_IMAGES.filter(function(i) { return i.type === 'block'; }).forEach(function(item) {
+	    if (loadedImages[item.key]) {
+	      blockImages[item.blockType] = loadedImages[item.key];
+	    }
+	  });
+	  blockImagesReady = true;
+
+
+	  if (loadedImages['beijing']) {
+	    try { document.body.style.backgroundImage = "url('" + loadedImages['beijing'].src + "')"; } catch(e) {}
+	  }
+
+
+	  // Show 100% briefly then hide preloader
+	  try {
+	    if (preloaderBar) preloaderBar.style.width = '100%';
+	    if (preloaderText) preloaderText.textContent = '正在进入游戏...';
+	  } catch(e) {}
+
+
+	  setTimeout(function() {
+	    try {
+	      if (preloaderScreen) preloaderScreen.classList.add('hidden');
+	    } catch(e) {}
+	    startGame();
+	  }, 300);
+	}
+
+
+	function onAllImagesReady() {
+	  if (preloadAllReady) return;
+	  preloadAllReady = true;
+	  clearTimeout(preloadFailsafeTimer);
+	  clearTimeout(preloadSkipTimer);
+	  finishPreloaderAndStart();
+	}
 // Legacy globals (set by onAllImagesReady)
 let boardBgReady = false;
 let boardBgImage = null;
