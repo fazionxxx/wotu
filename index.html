@@ -18,142 +18,162 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif;
-    background: #2a2218;
+    background: #2a2218 center/cover no-repeat fixed; /* beijing.png URL set after preload */
     min-height: 100vh; min-height: 100dvh;
     display: flex; justify-content: center; align-items: center;
     overflow: hidden; touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     -webkit-user-select: none; user-select: none;
   }
-  /* Subtle grain overlay on body */
+  /* Subtle vignette overlay — darkens edges to keep text readable over bg image */
   body::before {
     content: ''; position: fixed; inset: 0; z-index: -1;
-    background: radial-gradient(ellipse at 50% 30%, #3d2e1c 0%, #2a2218 60%, #1a1410 100%);
-    opacity: 0.7;
+    background: radial-gradient(ellipse at 50% 30%, rgba(26,20,16,0.10) 0%, rgba(26,20,16,0.30) 60%, rgba(10,8,4,0.50) 100%);
   }
   #game-container {
     width: 100%; max-width: 480px; padding: 8px 12px;
     display: flex; flex-direction: column; align-items: center; gap: 6px;
   }
+  /* ── UI Canvas overlay system ── */
+  .ui-section { position: relative; width: 100%; }
+  .ui-bg-canvas {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0;
+  }
+  .ui-overlay { position: relative; z-index: 1; }
+
   #top-bar {
-    width: 100%;
-    background: linear-gradient(180deg, #7A4E2A 0%, #5C3516 40%, #43250A 100%);
-    border-radius: 10px; padding: 10px 14px; color: #FDF8D0;
-    box-shadow: 0 3px 10px rgba(30,15,5,0.35), inset 0 1px 0 rgba(160,110,65,0.3);
+    width: 100%; padding: 10px 14px; color: #3E2410;
     display: flex; flex-direction: column; gap: 6px;
-    border: 2px solid rgba(30,12,3,0.5);
+    min-height: 88px; /* ensure canvas has room */
   }
   #top-bar .info-row {
     display: flex; justify-content: space-between; align-items: center;
     font-size: 13px; font-weight: 500;
   }
-  #level-name { font-size: 15px; font-weight: 700; color: #F0DC82; letter-spacing: 1px; }
-  .stat { display: flex; align-items: center; gap: 4px; }
-  .stat-icon { font-size: 16px; }
-  .stat-value { font-weight: 700; font-size: 14px; color: #F0DC82; }
+  #level-name { font-size: 15px; font-weight: 700; color: #F0DC82; letter-spacing: 1px;
+    text-shadow: 0 1px 3px rgba(30,15,5,0.5); }
+  .stat { display: flex; align-items: center; gap: 4px; text-align: center; }
+  .stat-icon { font-size: 16px; filter: drop-shadow(0 1px 2px rgba(30,15,5,0.35)); }
+  .stat-value { font-weight: 700; font-size: 14px; color: #2E1808;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
   #grain-bar-wrapper { display: flex; align-items: center; gap: 8px; }
   #farmer-avatar {
     width: 32px; height: 32px; border-radius: 50%;
-    background: #F0DC82; border: 2px solid #C4A840; flex-shrink: 0;
+    background: #F0DC82; border: 2.5px solid #A88920; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center; font-size: 18px;
-    box-shadow: 0 1px 3px rgba(30,15,5,0.25);
+    box-shadow: 0 2px 4px rgba(30,15,5,0.3);
   }
   #grain-bar-outer {
-    flex: 1; height: 16px; background: rgba(40,20,8,0.5);
-    border-radius: 8px; overflow: hidden; position: relative;
-    border: 1.5px solid rgba(50,25,10,0.55);
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+    flex: 1; height: 18px; overflow: hidden; position: relative;
+    visibility: hidden; /* Canvas draws the grain bar behind */
   }
-  #grain-bar-inner {
-    height: 100%;
-    background: linear-gradient(90deg, #C4A840 0%, #E1CB6B 30%, #F0DC82 60%, #E1CB6B 100%);
-    border-radius: 7px;
-    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    box-shadow: inset 0 1px 0 rgba(255,255,200,0.35);
-  }
-  #grain-bar-inner::after {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%;
-    background: linear-gradient(180deg, rgba(255,255,220,0.35), transparent);
-    border-radius: 7px 7px 0 0;
-  }
-  #grain-bar-label { font-size: 10px; font-weight: 600; color: #E1CB6B; white-space: nowrap; min-width: 42px; text-align: right; }
+  #grain-bar-inner { visibility: hidden; }
+  #grain-bar-label { font-size: 10px; font-weight: 600; color: #F0DC82; white-space: nowrap; min-width: 42px; text-align: right; text-shadow: 0 1px 3px rgba(30,15,5,0.45); }
   #board-wrapper {
-    position: relative; background: rgba(247,242,177,0.18);
-    border-radius: 10px; padding: 8px; box-shadow: 0 2px 8px rgba(30,15,5,0.2);
+    position: relative;
+    border-radius: 10px; padding: 6px; box-shadow: 0 4px 16px rgba(30,15,5,0.30);
     display: flex; align-items: center; justify-content: center;
-    border: 1.5px solid rgba(120,100,70,0.22);
   }
-  canvas#game-canvas { display: block; border-radius: 4px; cursor: pointer; }
-  #cell-info {
-    width: 100%; max-width: 480px; padding: 6px 14px;
-    background: linear-gradient(180deg, #6B3D23, #4A2510); border-radius: 6px;
-    color: #FDF8D0; font-size: 12px; display: flex;
-    align-items: center; gap: 8px; min-height: 34px;
-    box-shadow: 0 1px 4px rgba(30,15,5,0.2);
-    transition: background 0.2s;
-    border: 1.5px solid rgba(30,12,3,0.4);
+  canvas#game-canvas { display: block; cursor: pointer; }
+  /* Block Legend */
+  #block-legend {
+    width: 100%; max-width: 480px; padding: 4px 10px;
+    min-height: 50px;
   }
-  #cell-info-icon { font-size: 18px; flex-shrink: 0; }
-  #cell-info-name { font-weight: 600; white-space: nowrap; min-width: 56px; }
-  #cell-info-desc { font-size: 11px; color: #E1CB6B; opacity: 0.85; }
-  #cell-info.highlight { background: linear-gradient(180deg, #7A4E2A, #5C3516); box-shadow: 0 2px 8px rgba(225,171,0,0.3); }
+  #block-legend .legend-label {
+    font-size: 11px; font-weight: 600; color: #F0DC82;
+    white-space: nowrap; margin-bottom: 4px;
+    text-shadow: 0 1px 3px rgba(30,15,5,0.4);
+    text-align: center;
+  }
+  #block-legend .legend-row {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: flex-end;
+  }
+  #block-legend .legend-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    cursor: pointer; padding: 4px 6px; border-radius: 10px;
+    transition: background 0.2s, transform 0.15s;
+    min-width: 52px;
+  }
+  #block-legend .legend-item:hover { background: rgba(253,251,200,0.15); }
+  #block-legend .legend-item:active { transform: scale(0.92); }
+  #block-legend .legend-icon-wrap {
+    width: 38px; height: 38px; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 2px 6px rgba(30,15,5,0.25);
+    border: 2px solid rgba(67,37,10,0.35);
+    background: rgba(0,0,0,0.15);
+    flex-shrink: 0;
+  }
+  #block-legend .legend-icon-wrap canvas {
+    display: block; width: 100%; height: 100%;
+  }
+  #block-legend .legend-name {
+    font-size: 10px; color: #FDF8D0; font-weight: 500;
+    text-shadow: 0 1px 2px rgba(30,15,5,0.4);
+    text-align: center; line-height: 1.2; max-width: 56px;
+  }
 
   /* Level Selector */
   #level-selector {
-    width: 100%; max-width: 480px; display: flex;
-    align-items: center; gap: 6px; padding: 6px 8px;
-    background: rgba(67,37,10,0.35); border-radius: 8px;
+    width: 100%; max-width: 480px; padding: 8px 10px;
     flex-wrap: wrap; justify-content: center;
-    border: 1px solid rgba(67,37,10,0.2);
+    min-height: 42px; /* ensure canvas has room */
   }
   #level-selector .level-select-label {
-    font-size: 12px; font-weight: 600; color: #E1CB6B;
+    font-size: 12px; font-weight: 600; color: #F0DC82;
     white-space: nowrap; margin-right: 2px;
+    text-shadow: 0 1px 3px rgba(30,15,5,0.45);
   }
   .level-btn {
     flex: 1; min-width: 90px; padding: 7px 10px;
-    border-radius: 14px; border: 2px solid rgba(60,30,12,0.4);
+    border: none;
     font-size: 11px; font-weight: 600; cursor: pointer;
     transition: all 0.25s; white-space: nowrap;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.3px; text-align: center;
+    background: transparent; color: #3E2410;
+    position: relative; z-index: 1;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.12);
   }
   .level-btn.active {
-    background: linear-gradient(180deg, #F0DC82, #E1CB6B);
-    color: #3E2410; border-color: #C4A840;
-    box-shadow: 0 2px 8px rgba(196,168,64,0.4);
+    background: transparent;
+    color: #2E1808;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.18);
   }
   .level-btn.unlocked {
-    background: linear-gradient(180deg, #FDFBD0, #F2EAA0);
-    color: #3E2410; border-color: rgba(80,50,20,0.35);
+    background: transparent;
+    color: #3E2410;
   }
-  .level-btn.unlocked:hover { background: #FDFBC8; border-color: #7A4E2A; }
+  .level-btn.unlocked:hover { background: rgba(253,251,200,0.12); }
   .level-btn.locked {
-    background: rgba(160,140,110,0.25);
-    color: #9B8B7B; border-color: rgba(160,140,110,0.2);
-    cursor: not-allowed; opacity: 0.7;
+    background: transparent;
+    color: #8B8070; cursor: not-allowed; opacity: 0.75;
   }
   .level-btn:active:not(.locked) { transform: scale(0.95); }
 
-  #bottom-bar { width: 100%; display: flex; gap: 10px; justify-content: center; }
+  #bottom-bar { width: 100%; padding: 8px 0; display: flex; justify-content: center; gap: 12px; position: relative; }
   #bottom-bar button {
-    flex: 1; max-width: 140px; padding: 10px 0; border: 2px solid rgba(60,30,12,0.4);
-    border-radius: 18px; font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
-    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; touch-action: manipulation;
+    padding: 8px 22px; border: 2px solid rgba(67,37,10,0.35);
+    border-radius: 20px; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; text-align: center;
+    cursor: pointer; transition: transform 0.15s, background 0.2s, box-shadow 0.2s; touch-action: manipulation;
+    background: rgba(247,242,177,0.55); color: #3E2410;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(30,15,5,0.15);
   }
+  #bottom-bar button:hover { background: rgba(247,242,177,0.75); box-shadow: 0 3px 12px rgba(30,15,5,0.22); }
   #bottom-bar button:active { transform: scale(0.95); }
-  #btn-restart { background: linear-gradient(180deg, #FDFBDA, #EBE0A0); color: #3E2410; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-  #btn-next { background: linear-gradient(180deg, #F0DC82, #C4A840); color: #3E2410; box-shadow: 0 3px 10px rgba(196,168,64,0.4); display: none; }
-  #btn-rules { background: linear-gradient(180deg, #FDFBD0, #F2EAA0); color: #3E2410; border: 2px solid rgba(80,50,20,0.35); font-size: 13px; }
+  #btn-restart { color: #3E2410; }
+  #btn-next { color: #3E2410; display: none; }
+  #btn-rules { color: #3E2410; font-size: 13px; }
   #rules-popup-box { max-height: 75vh; overflow-y: auto; text-align: left; }
   #rules-popup-box .rule-section { margin-bottom: 14px; }
   #rules-popup-box .rule-section h4 { font-size: 14px; color: #43250A; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
   #rules-popup-box .rule-section p { font-size: 12px; color: #5C3516; line-height: 1.7; margin: 0; }
   #rules-popup-box .rule-blocks { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
   #rules-popup-box .rule-block-tag {
-    font-size: 12px; padding: 3px 8px; border-radius: 10px;
-    background: rgba(247,242,177,0.5); color: #43250A; white-space: nowrap;
-    border: 1px solid rgba(67,37,10,0.15);
+    font-size: 12px; padding: 4px 10px; border-radius: 12px;
+    background: rgba(247,242,177,0.55); color: #43250A; white-space: nowrap;
+    border: 1.5px solid rgba(67,37,10,0.2);
   }
   #popup-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -165,9 +185,9 @@
   #popup-box {
     background: linear-gradient(180deg, #FDFBC8 0%, #F7F2B1 40%, #E8DF98 100%);
     border-radius: 14px; padding: 24px 20px; max-width: 340px; width: 85%;
-    text-align: center; box-shadow: 0 8px 32px rgba(30,15,5,0.35);
+    text-align: center; box-shadow: 0 8px 32px rgba(30,15,5,0.4);
     animation: popupIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-    border: 3px solid rgba(67,37,10,0.5);
+    border: 3px solid rgba(67,37,10,0.55);
   }
   @keyframes popupIn {
     from { transform: scale(0.8); opacity: 0; }
@@ -177,36 +197,36 @@
   #popup-title { font-size: 20px; font-weight: 700; color: #3E2410; margin-bottom: 6px; }
   #popup-message { font-size: 13px; color: #5C3516; line-height: 1.7; margin-bottom: 16px; }
   #popup-quote {
-    background: #FDFBC8; border-left: 3px solid #C4A840;
+    background: #FDFBC8; border-left: 4px solid #A88920;
     padding: 10px 12px; font-size: 12px; color: #5C3516; line-height: 1.6;
     text-align: left; margin-bottom: 16px; border-radius: 0 8px 8px 0; display: none;
   }
   #popup-quote .attribution { display: block; text-align: right; color: #7A4E2A; font-size: 11px; margin-top: 4px; }
   #popup-btn {
-    display: inline-block; padding: 10px 36px; border: 2px solid rgba(60,30,12,0.4);
-    border-radius: 18px; font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px;
+    display: inline-block; padding: 10px 36px; border: 2px solid rgba(60,30,12,0.45);
+    border-radius: 20px; font-size: 15px; font-weight: 600; cursor: pointer; letter-spacing: 0.5px;
     transition: transform 0.15s;
   }
   #popup-btn:active { transform: scale(0.95); }
-  .win-btn { background: linear-gradient(180deg, #F0DC82, #C4A840); color: #3E2410; box-shadow: 0 3px 12px rgba(196,168,64,0.45); }
-  .lose-btn { background: linear-gradient(180deg, #EF5350, #E53935); color: white; box-shadow: 0 3px 12px rgba(229,57,53,0.35); }
-  .summary-btn { background: linear-gradient(180deg, #E1CB6B, #C4A840); color: #3E2410; box-shadow: 0 3px 12px rgba(196,168,64,0.45); }
+  .win-btn { background: linear-gradient(180deg, #F0DC82, #C4A840); color: #3E2410; box-shadow: 0 3px 14px rgba(196,168,64,0.5); }
+  .lose-btn { background: linear-gradient(180deg, #EF5350, #E53935); color: white; box-shadow: 0 3px 14px rgba(229,57,53,0.4); }
+  .summary-btn { background: linear-gradient(180deg, #E1CB6B, #C4A840); color: #3E2410; box-shadow: 0 3px 14px rgba(196,168,64,0.5); }
   #guide-tooltip {
     position: fixed; z-index: 80; background: linear-gradient(180deg, #FDFBC8, #F7F2B1);
     color: #3E2410; padding: 12px 16px; border-radius: 10px; font-size: 13px; line-height: 1.6;
     max-width: 260px; text-align: left; pointer-events: auto;
-    display: none; box-shadow: 0 4px 20px rgba(30,15,5,0.35);
+    display: none; box-shadow: 0 4px 20px rgba(30,15,5,0.4);
     transition: opacity 0.3s; cursor: default;
-    border: 2.5px solid rgba(67,37,10,0.45);
+    border: 2.5px solid rgba(67,37,10,0.5);
   }
   #guide-tooltip .guide-close {
     display: inline-block; margin-top: 8px; padding: 4px 14px;
-    background: rgba(196,168,64,0.25); border-radius: 12px;
+    background: rgba(196,168,64,0.3); border-radius: 14px;
     font-size: 11px; cursor: pointer; color: #5C3516;
     text-align: center; transition: background 0.2s;
-    border: 1px solid rgba(196,168,64,0.35);
+    border: 1.5px solid rgba(196,168,64,0.4);
   }
-  #guide-tooltip .guide-close:hover { background: rgba(196,168,64,0.45); }
+  #guide-tooltip .guide-close:hover { background: rgba(196,168,64,0.5); }
   #guide-tooltip::after {
     content: ''; position: absolute; width: 0; height: 0;
     border-left: 8px solid transparent; border-right: 8px solid transparent;
@@ -250,15 +270,15 @@
   #guide-backdrop.active { display: block; }
   #btn-mute {
     position: fixed; top: 12px; right: 12px; width: 36px; height: 36px;
-    border-radius: 50%; border: 2px solid rgba(67,37,10,0.35);
-    background: rgba(247,242,177,0.8);
+    border-radius: 50%; border: 2px solid rgba(67,37,10,0.45);
+    background: rgba(247,242,177,0.85);
     font-size: 18px; cursor: pointer; z-index: 50;
-    box-shadow: 0 2px 6px rgba(30,15,5,0.15);
+    box-shadow: 0 2px 8px rgba(30,15,5,0.2);
     display: flex; align-items: center; justify-content: center;
   }
   #summary-screen {
     display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: linear-gradient(180deg, #F1E0C8, #D7CCC8);
+    background: linear-gradient(180deg, #FDFBC8 0%, #F7F2B1 50%, #E8DF98 100%);
     z-index: 200; flex-direction: column; align-items: center; justify-content: center;
     padding: 24px; text-align: center;
   }
@@ -267,110 +287,113 @@
   .summary-stats { font-size: 15px; color: #43250A; line-height: 2; margin-bottom: 16px; }
   .summary-stats span { font-weight: 700; color: #7A4E2A; }
 
-  /* Start Screen */
-  #start-screen {
+  /* Preloader */
+  #preloader {
     position: fixed; inset: 0; z-index: 1000;
     background: linear-gradient(180deg, #3d2e1c 0%, #2a2218 50%, #1a1410 100%);
     display: flex; align-items: center; justify-content: center;
     flex-direction: column; padding: 24px;
     transition: opacity 0.5s ease, visibility 0.5s ease;
   }
-  #start-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-  #start-screen .start-card {
+  #preloader.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  #preloader .preloader-card {
     background: linear-gradient(180deg, #FDFBC8 0%, #F7F2B1 50%, #E8DF98 100%);
     border-radius: 16px; padding: 32px 24px;
     max-width: 380px; width: 100%;
     text-align: center;
-    box-shadow: 0 8px 32px rgba(30,15,5,0.4);
-    animation: startFadeIn 0.8s ease;
-    border: 3px solid rgba(67,37,10,0.4);
+    box-shadow: 0 8px 32px rgba(30,15,5,0.45);
+    animation: preloaderFadeIn 0.6s ease;
+    border: 3px solid rgba(67,37,10,0.5);
   }
-  @keyframes startFadeIn {
+  @keyframes preloaderFadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  #start-screen .start-icon { font-size: 56px; margin-bottom: 8px; }
-  #start-screen h1 {
+  #preloader .preloader-icon { font-size: 56px; margin-bottom: 8px; }
+  #preloader h1 {
     font-size: 28px; color: #3E2410; font-weight: 800;
     letter-spacing: 2px; margin-bottom: 4px;
   }
-  #start-screen .start-subtitle {
+  #preloader .preloader-subtitle {
     font-size: 13px; color: #7A4E2A; margin-bottom: 20px;
     letter-spacing: 1px;
   }
-  #start-screen .start-divider {
+  #preloader .preloader-divider {
     width: 48px; height: 3px; background: #C4A840;
     border-radius: 2px; margin: 0 auto 16px;
   }
-  #start-screen .start-intro {
-    font-size: 14px; color: #43250A; line-height: 1.8;
-    text-align: left; margin-bottom: 24px;
+  #preloader .preloader-bar-track {
+    width: 100%; height: 8px; background: rgba(67,37,10,0.12);
+    border-radius: 4px; overflow: hidden;
   }
-  #start-screen .start-intro .highlight {
-    color: #5C3516; font-weight: 600;
+  #preloader .preloader-bar-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #C4A840, #F0DC82);
+    border-radius: 4px;
+    transition: width 0.3s ease;
   }
-  #btn-start-game {
-    background: linear-gradient(180deg, #F0DC82, #C4A840);
-    color: #3E2410; border: 2px solid rgba(67,37,10,0.35);
-    border-radius: 20px; padding: 12px 48px; font-size: 16px; font-weight: 700;
-    cursor: pointer; letter-spacing: 1px;
-    box-shadow: 0 4px 12px rgba(196,168,64,0.5);
-    transition: transform 0.15s, box-shadow 0.15s;
-    -webkit-tap-highlight-color: transparent;
+  #preloader .preloader-text {
+    margin-top: 12px; font-size: 13px; color: #7A4E2A;
+    letter-spacing: 1px;
   }
-  #btn-start-game:active { transform: scale(0.95); box-shadow: 0 2px 6px rgba(196,168,64,0.35); }
 </style>
 </head>
 <body>
 
-<div id="start-screen">
-  <div class="start-card">
-    <div class="start-icon">🌍🌾</div>
+<div id="preloader">
+  <div class="preloader-card">
+    <div class="preloader-icon">🌍</div>
     <h1>沃土新生</h1>
-    <div class="start-subtitle">2026年全国土地日</div>
-    <div class="start-divider"></div>
-    <div class="start-intro">
-      欢迎来到<span class="highlight">「沃土新生」</span>——一款以土地修复为主题的三消游戏。
-      <br><br>
-      在这里，你将扮演<span class="highlight">土地守护者</span>，脚下的土地因不合理利用出现了板结、盐碱、污染、沙化等退化问题。通过三消的方式逐步改良土质、修复耕地，在有限步数与粮食储备的约束下完成土地复耕任务。
-      <br><br>
-      <strong>每一块复耕完成的良田</strong>，都是助力守护耕地红线、促进土地高质量发展的具象体现。让我们珍惜每一寸土地，共同守护中华民族永续发展的根基。
+    <div class="preloader-subtitle">2026年全国土地日</div>
+    <div class="preloader-divider"></div>
+    <div class="preloader-bar-track">
+      <div class="preloader-bar-fill" id="preloader-bar"></div>
     </div>
-    <button id="btn-start-game">🌱 开始守护</button>
+    <div class="preloader-text" id="preloader-text">正在加载素材...</div>
   </div>
 </div>
 
 <button id="btn-mute" aria-label="音效开关">🔊</button>
 
 <div id="game-container">
-  <div id="top-bar">
-    <div class="info-row">
-      <span id="level-name">复苏之风</span>
-      <span class="stat"><span class="stat-icon">🌾</span> 复耕 <span class="stat-value" id="reclaim-progress">0/6</span></span>
-      <span class="stat"><span class="stat-icon">👣</span> 步数 <span class="stat-value" id="steps-left">30</span></span>
-    </div>
-    <div id="grain-bar-wrapper">
-      <div id="farmer-avatar">👨‍🌾</div>
-      <div id="grain-bar-outer"><div id="grain-bar-inner" style="width:100%"></div></div>
-      <span id="grain-bar-label">粮食 100%</span>
+  <div id="top-bar" class="ui-section">
+    <canvas class="ui-bg-canvas" id="top-canvas"></canvas>
+    <div class="ui-overlay">
+      <div class="info-row">
+        <span id="level-name">复苏之风</span>
+        <span class="stat"><span class="stat-icon">🌾</span> 复耕 <span class="stat-value" id="reclaim-progress">0/6</span></span>
+        <span class="stat"><span class="stat-icon">👣</span> 步数 <span class="stat-value" id="steps-left">30</span></span>
+      </div>
+      <div id="grain-bar-wrapper">
+        <div id="farmer-avatar">👨‍🌾</div>
+        <div id="grain-bar-outer"><div id="grain-bar-inner" style="width:100%"></div></div>
+        <span id="grain-bar-label">粮食 100%</span>
+      </div>
     </div>
   </div>
-  <div id="level-selector">
-    <span class="level-select-label">🗺️ 关卡</span>
-    <button class="level-btn active" data-level="1">1 · 复苏之风</button>
-    <button class="level-btn locked" data-level="2">🔒 2 · 大地疗愈</button>
-    <button class="level-btn locked" data-level="3">🔒 3 · 沃野守卫</button>
+  <div id="level-selector" class="ui-section">
+    <canvas class="ui-bg-canvas" id="level-canvas"></canvas>
+    <div class="ui-overlay" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;width:100%;">
+      <span class="level-select-label">🗺️ 关卡</span>
+      <button class="level-btn active" data-level="1">1 · 复苏之风</button>
+      <button class="level-btn locked" data-level="2">🔒 2 · 大地疗愈</button>
+      <button class="level-btn locked" data-level="3">🔒 3 · 沃野守卫</button>
+    </div>
   </div>
   <div id="board-wrapper"><canvas id="game-canvas"></canvas></div>
-  <div id="cell-info">
-    <span id="cell-info-icon">📦</span>
-    <span id="cell-info-name">点击格子查看信息</span>
-    <span id="cell-info-desc"></span>
+  <div id="block-legend" class="ui-section">
+    <canvas class="ui-bg-canvas" id="legend-canvas"></canvas>
+    <div class="ui-overlay">
+      <div class="legend-label">📦 本关方块</div>
+      <div class="legend-row" id="legend-row"></div>
+    </div>
   </div>
   <div id="bottom-bar">
+    <canvas class="ui-bg-canvas" id="bottom-canvas"></canvas>
     <button id="btn-restart">🔄 重玩</button>
     <button id="btn-rules">📋 规则</button>
     <button id="btn-next">▶ 下一关</button>
+    </div>
   </div>
 </div>
 
@@ -599,8 +622,8 @@ function addBounce(r, c, intensity = 1.0) {
   startRenderLoop();
   // Spawn a few sparkle particles
   if (cellSize > 0 && game.board && game.board[r] && game.board[r][c]) {
-    const cx = c * cellSize + cellSize / 2;
-    const cy = r * cellSize + cellSize / 2;
+    const cx = boardMargin + c * cellSize + cellSize / 2;
+    const cy = boardMargin + r * cellSize + cellSize / 2;
     spawnParticles(cx, cy, 6, '#F0DC82', cellSize * 0.06, 300);
   }
 }
@@ -964,22 +987,527 @@ function handHatch(ctx, x, y, w, h, count, color, seed) {
   }
 }
 
-const canvas = document.getElementById('game-canvas');
-const ctx = canvas.getContext('2d');
-
-let cellSize = 0;
-let boardRenderSize = 6;
-
-function calcCellSize(boardSize) {
-  const maxWidth = Math.min(window.innerWidth - 24, 480) - 16;
-  return Math.floor(maxWidth / boardSize);
+function squiggleTexture(ctx, x, y, w, h, count, color, seed) {
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 0.35;
+  for (let i = 0; i < count; i++) {
+    const sx = x + hashXY(i, 0, seed) * w;
+    const sy = y + hashXY(i, 1, seed) * h;
+    if (sx < x || sx > x + w || sy < y || sy > y + h) continue;
+    const startAngle = hashXY(i, 2, seed) * Math.PI * 2;
+    const arcLen = 0.2 + hashXY(i, 3, seed) * 1.5;
+    const radius = 1.2 + hashXY(i, 4, seed) * 3.5;
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, startAngle, startAngle + arcLen);
+    ctx.stroke();
+  }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// UI COMPONENT DRAWING (hand-drawn style, adapted from test_ui_reserve)
+// ═══════════════════════════════════════════════════════════════
+
+function drawWoodHeader(ctx, x, y, w, h, seed) {
+  ctx.save();
+  wobblyRoundRect(ctx, x, y, w, h, 6, 0.022, seed);
+  const hGrad = ctx.createLinearGradient(x, y, x, y + h);
+  hGrad.addColorStop(0, '#7A4E2A');
+  hGrad.addColorStop(0.5, '#5C3516');
+  hGrad.addColorStop(1, '#43250A');
+  ctx.fillStyle = hGrad;
+  ctx.fill();
+
+  ctx.save();
+  wobblyRoundRect(ctx, x, y, w, h, 6, 0.022, seed);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(90,55,25,0.22)';
+  ctx.lineCap = 'round';
+  for (let i = 0; i < 35; i++) {
+    const gx = x + hashXY(i, 0, seed + 930) * w;
+    const gy = y + hashXY(i, 1, seed + 930) * h;
+    const glen = 8 + hashXY(i, 2, seed + 930) * 18;
+    ctx.lineWidth = 0.4 + hashXY(i, 3, seed + 930) * 1.1;
+    ctx.beginPath();
+    ctx.moveTo(gx, gy);
+    ctx.lineTo(gx + glen * 0.6, gy + (hashXY(i, 4, seed + 930) - 0.5) * 8);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.save();
+  wobblyRoundRect(ctx, x, y, w, h, 6, 0.022, seed);
+  ctx.clip();
+  speckleNoise(ctx, x, y, w, h, Math.floor(w * h * 0.04), 'rgba(20,10,3,A)', [0.04, 0.18], seed + 940);
+  ctx.restore();
+
+  wobblyRoundRect(ctx, x, y, w, h, 6, 0.022, seed);
+  handStroke(ctx, 'rgba(30,12,3,0.70)', 2.0, 2, 1.2, seed + 950);
+  ctx.restore();
+}
+
+function drawStatCard(ctx, x, y, w, h, icon, label, value, color, seed) {
+  // Only draws decorative card background — HTML overlay handles all text
+  ctx.save();
+  wobblyRoundRect(ctx, x, y, w, h, 5, 0.024, seed);
+  const cardGrad = ctx.createLinearGradient(x, y, x, y + h);
+  cardGrad.addColorStop(0, '#FDFBD0');
+  cardGrad.addColorStop(1, '#F2EAA0');
+  ctx.fillStyle = cardGrad;
+  ctx.fill();
+
+  wobblyRoundRect(ctx, x, y, w, h, 5, 0.024, seed);
+  ctx.strokeStyle = 'rgba(60,30,10,0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Subtle inner speckle for parchment texture
+  speckleNoise(ctx, x + 2, y + 2, w - 4, h - 4,
+    Math.floor(w * h * 0.02), 'rgba(180,150,100,A)', [0.02, 0.08], seed + 870);
+  ctx.restore();
+}
+
+function drawGrainProgressBar(ctx, x, y, w, h, fillRatio, seed) {
+  ctx.save();
+  wobblyRoundRect(ctx, x, y, w, h, h * 0.45, 0.026, seed);
+
+  const grooveGrad = ctx.createLinearGradient(x, y, x, y + h);
+  grooveGrad.addColorStop(0, 'rgba(50,25,10,0.55)');
+  grooveGrad.addColorStop(0.5, 'rgba(35,15,5,0.65)');
+  grooveGrad.addColorStop(1, 'rgba(45,20,8,0.50)');
+  ctx.fillStyle = grooveGrad;
+  ctx.fill();
+
+  wobblyRoundRect(ctx, x + 1.5, y + 1, w - 3, h * 0.5, h * 0.4, 0.028, seed + 10);
+  ctx.strokeStyle = 'rgba(15,5,2,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  if (fillRatio > 0.01) {
+    ctx.save();
+    wobblyRoundRect(ctx, x + 2, y + 2, w - 4, h - 4, (h - 4) * 0.42, 0.026, seed);
+    ctx.clip();
+
+    const fillW = (w - h * 0.3) * fillRatio;
+    const fillX = x + h * 0.12;
+    const fillY = y + h * 0.12;
+    const fillH = h * 0.76;
+
+    wobblyRoundRect(ctx, fillX, fillY, Math.max(fillW, h * 0.15), fillH, fillH * 0.4, 0.030, seed + 800);
+
+    const fillGrad = ctx.createLinearGradient(fillX, fillY, fillX, fillY + fillH);
+    fillGrad.addColorStop(0, PALETTE.goldLight);
+    fillGrad.addColorStop(0.35, PALETTE.gold);
+    fillGrad.addColorStop(0.7, PALETTE.goldDark);
+    fillGrad.addColorStop(1, '#A88920');
+    ctx.fillStyle = fillGrad;
+    ctx.fill();
+
+    const hlGrad = ctx.createLinearGradient(fillX, fillY, fillX, fillY + fillH * 0.5);
+    hlGrad.addColorStop(0, 'rgba(255,255,200,0.30)');
+    hlGrad.addColorStop(1, 'rgba(255,255,200,0)');
+    ctx.fillStyle = hlGrad;
+    ctx.fill();
+
+    speckleNoise(ctx, fillX, fillY, Math.max(fillW, h * 0.15), fillH,
+      Math.floor(fillW * fillH * 0.06), 'rgba(255,255,180,A)', [0.08, 0.22], seed + 810);
+
+    ctx.restore();
+  }
+
+  wobblyRoundRect(ctx, x, y, w, h, h * 0.45, 0.026, seed);
+  handStroke(ctx, 'rgba(40,18,8,0.60)', 1.4, 2, 1.0, seed + 820);
+  ctx.restore();
+}
+
+function drawButton(ctx, x, y, w, h, text, type, seed) {
+  // Only draws decorative button background — HTML overlay handles all text
+  ctx.save();
+  const br = h * 0.42;
+
+  wobblyRoundRect(ctx, x, y, w, h, br, 0.024, seed);
+
+  let bgGrad;
+  switch (type) {
+    case 'primary':
+      bgGrad = ctx.createLinearGradient(x, y, x, y + h);
+      bgGrad.addColorStop(0, PALETTE.goldLight);
+      bgGrad.addColorStop(0.5, PALETTE.gold);
+      bgGrad.addColorStop(1, PALETTE.goldDark);
+      break;
+    case 'secondary':
+      bgGrad = ctx.createLinearGradient(x, y, x, y + h);
+      bgGrad.addColorStop(0, '#FDFBDA');
+      bgGrad.addColorStop(1, '#EBE0A0');
+      break;
+    case 'ghost':
+      bgGrad = ctx.createLinearGradient(x, y, x, y + h);
+      bgGrad.addColorStop(0, 'rgba(255,255,240,0.22)');
+      bgGrad.addColorStop(1, 'rgba(240,230,200,0.12)');
+      break;
+    case 'locked':
+      bgGrad = 'rgba(160,140,110,0.30)';
+      break;
+    default:
+      bgGrad = PALETTE.parchment;
+  }
+  ctx.fillStyle = bgGrad;
+  ctx.fill();
+
+  ctx.save();
+  wobblyRoundRect(ctx, x, y, w, h, br, 0.024, seed);
+  ctx.clip();
+  handHatch(ctx, x, y, w, h, Math.floor(w * h * 0.018), 'rgba(0,0,0,0.05)', seed + 830);
+  if (type === 'primary') {
+    speckleNoise(ctx, x, y, w, h, Math.floor(w * h * 0.03), 'rgba(255,255,180,A)', [0.06, 0.16], seed + 840);
+  }
+  ctx.restore();
+
+  wobblyRoundRect(ctx, x, y, w, h, br, 0.024, seed);
+  const strokeAlpha = type === 'ghost' ? '0.45' : '0.60';
+  handStroke(ctx, 'rgba(60,30,12,' + strokeAlpha + ')', 1.8, 2, 0.8, seed + 850);
+  ctx.restore();
+}
+
+function drawInfoLabel(ctx, x, y, w, h, icon, text, seed) {
+  // Only draws decorative label background — HTML overlay handles all text
+  ctx.save();
+  const lr = h * 0.30;
+  wobblyRoundRect(ctx, x, y, w, h, lr, 0.022, seed);
+
+  const labelGrad = ctx.createLinearGradient(x, y, x, y + h);
+  labelGrad.addColorStop(0, '#6B3D23');
+  labelGrad.addColorStop(1, '#4A2510');
+  ctx.fillStyle = labelGrad;
+  ctx.fill();
+
+  wobblyRoundRect(ctx, x, y, w, h, lr, 0.022, seed);
+  handStroke(ctx, 'rgba(30,12,3,0.65)', 1.6, 2, 0.8, seed + 880);
+  ctx.restore();
+}
+
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+let canvasLogicalSize = 0;  // logical pixel size of the board canvas (CSS pixels)
+
+// ── Unified Preloader: track all images, show progress, then start game ──
+const PRELOAD_IMAGES = [
+  { key: 'beijing',    src: 'beijing.png',          type: 'bg' },
+  { key: 'qipan',      src: 'qipan.png',            type: 'board' },
+  { key: 'banjie',     src: 'banjie.png',           type: 'block', blockType: BLOCK.COMPACTION },
+  { key: 'zhongjinshu',src: 'zhongjinshu.png',      type: 'block', blockType: BLOCK.HEAVY_METAL },
+  { key: 'youji',      src: 'youji.png',            type: 'block', blockType: BLOCK.ORGANIC },
+  { key: 'shahua',     src: 'shahua.png',           type: 'block', blockType: BLOCK.DESERT },
+  { key: 'yanjian',    src: 'yanjian.png',          type: 'block', blockType: BLOCK.SALINE },
+  { key: 'shusongtukuai', src: 'shusongtukuai.png', type: 'block', blockType: BLOCK.LOOSE_SOIL },
+  { key: 'jiankanggengdi', src: 'jiankanggengdi.png', type: 'block', blockType: BLOCK.HEALTHY_FARM },
+];
+
+const loadedImages = {};     // key → Image element
+let preloadTotal = PRELOAD_IMAGES.length;
+let preloadDone = 0;
+let preloadAllReady = false;
+
+const preloaderBar = document.getElementById('preloader-bar');
+const preloaderText = document.getElementById('preloader-text');
+const preloaderScreen = document.getElementById('preloader');
+
+function updatePreloaderProgress() {
+  const pct = Math.round((preloadDone / preloadTotal) * 100);
+  if (preloaderBar) preloaderBar.style.width = pct + '%';
+  if (preloaderText) preloaderText.textContent = '正在加载素材... ' + pct + '%';
+}
+
+PRELOAD_IMAGES.forEach((item) => {
+  const img = new Image();
+  img.onload = () => {
+    preloadDone++;
+    loadedImages[item.key] = img;
+    updatePreloaderProgress();
+    console.log('Loaded: ' + item.src + ' (' + preloadDone + '/' + preloadTotal + ')');
+    if (preloadDone >= preloadTotal) {
+      onAllImagesReady();
+    }
+  };
+  img.onerror = () => {
+    preloadDone++;
+    console.warn('Failed to load: ' + item.src);
+    updatePreloaderProgress();
+    if (preloadDone >= preloadTotal) {
+      onAllImagesReady();
+    }
+  };
+  img.src = item.src;
+  // Belt-and-suspenders: cached images
+  if (img.complete && img.naturalWidth > 0) {
+    preloadDone++;
+    loadedImages[item.key] = img;
+    updatePreloaderProgress();
+    if (preloadDone >= preloadTotal) {
+      onAllImagesReady();
+    }
+  }
+});
+
+function onAllImagesReady() {
+  if (preloadAllReady) return;
+  preloadAllReady = true;
+  console.log('All images loaded — starting game');
+
+  // Populate legacy references for backward compatibility
+  boardBgImage = loadedImages['qipan'] || null;
+  boardBgReady = !!loadedImages['qipan'];
+  beijingImage = loadedImages['beijing'] || null;
+
+  // Build blockImages map
+  PRELOAD_IMAGES.filter(i => i.type === 'block').forEach((item) => {
+    if (loadedImages[item.key]) {
+      blockImages[item.blockType] = loadedImages[item.key];
+    }
+  });
+  blockImagesReady = true;
+
+  // Apply beijing background
+  if (loadedImages['beijing']) {
+    document.body.style.backgroundImage = "url('" + loadedImages['beijing'].src + "')";
+  }
+
+  // Wait a brief moment for the progress bar to show 100%, then transition
+  setTimeout(() => {
+    if (preloaderScreen) {
+      preloaderScreen.classList.add('hidden');
+    }
+    startGame();
+  }, 400);
+}
+
+// Legacy globals (set by onAllImagesReady)
+let boardBgReady = false;
+let boardBgImage = null;
+let beijingImage = null;
+const blockImages = {};
+let blockImagesReady = false;
+
+// ── UI Background Canvases ──
+const topCanvas = document.getElementById('top-canvas');
+const topCtx = topCanvas.getContext('2d');
+const levelCanvas = document.getElementById('level-canvas');
+const levelCtx = levelCanvas.getContext('2d');
+const legendCanvas = document.getElementById('legend-canvas');
+const legendCtx = legendCanvas.getContext('2d');
+const bottomCanvas = document.getElementById('bottom-canvas');
+const bottomCtx = bottomCanvas.getContext('2d');
+
+function resizeUICanvases() {
+  const uiCanvases = [
+    { el: topCanvas, ctx: topCtx, parentId: 'top-bar' },
+    { el: levelCanvas, ctx: levelCtx, parentId: 'level-selector' },
+    { el: legendCanvas, ctx: legendCtx, parentId: 'block-legend' },
+    { el: bottomCanvas, ctx: bottomCtx, parentId: 'bottom-bar' },
+  ];
+  for (const uc of uiCanvases) {
+    if (!uc.el || !uc.ctx) continue;
+    const parent = document.getElementById(uc.parentId);
+    if (!parent) continue;
+    const w = parent.offsetWidth || uc.el.offsetWidth || 300;
+    const h = parent.offsetHeight || uc.el.offsetHeight || 36;
+    if (w <= 0 || h <= 0) continue;
+    // Use 1:1 pixel mapping — simpler, matches test_ui_reserve behavior
+    // UI canvases don't need DPR scaling since they're decorative
+    if (uc.el.width !== w || uc.el.height !== h) {
+      uc.el.width = w;
+      uc.el.height = h;
+      uc.el.style.width = w + 'px';
+      uc.el.style.height = h + 'px';
+      uc.ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+  }
+}
+
+function drawTopBarCanvas() {
+  resizeUICanvases();
+  const w = topCanvas.offsetWidth;
+  const h = topCanvas.offsetHeight;
+  if (w <= 0 || h <= 0) return;
+  topCtx.clearRect(0, 0, w, h);
+
+  // Full wood header background
+  drawWoodHeader(topCtx, 0, 0, w, h, 20);
+
+  // Info row: 3 stat cards
+  const cardY = 7;
+  const cardH = Math.min(48, h - 28);
+  const cardW = (w - 10) / 3;
+  const gameData = game || {};
+  const cfg = gameData.levelConfig || LEVELS[0];
+  const grainPercent = Math.max(0, (gameData.grainReserve !== undefined ? gameData.grainReserve : 100));
+  const grainRatio = grainPercent / 100;
+
+  drawStatCard(topCtx, 1, cardY, cardW - 3, cardH, '🌱', '复耕进度',
+    (gameData.reclaimedCount || 0) + '/' + (gameData.target || cfg.target || 6), '#66BB6A', 30);
+  drawStatCard(topCtx, cardW + 4, cardY, cardW - 3, cardH, '👣', '剩余步数',
+    String(gameData.stepsLeft !== undefined ? gameData.stepsLeft : (cfg.steps || 30)), '#8D6E63', 31);
+  drawStatCard(topCtx, (cardW + 4) * 2, cardY, cardW - 3, cardH, '🌾', '粮食储备',
+    Math.round(grainPercent) + '%', PALETTE.gold, 32);
+
+  // Grain progress bar
+  const progY = cardY + cardH + 5;
+  const progH = Math.max(14, h - progY - 4);
+  drawGrainProgressBar(topCtx, 6, progY, w - 12, progH, grainRatio, 40);
+}
+
+function drawLevelCanvasFn() {
+  resizeUICanvases();
+  const w = levelCanvas.offsetWidth;
+  const h = levelCanvas.offsetHeight;
+  if (w <= 0 || h <= 0) return;
+  levelCtx.clearRect(0, 0, w, h);
+
+  drawWoodHeader(levelCtx, 0, 0, w, h, 50);
+
+  // Level tabs
+  const tabY = 4;
+  const tabH = h - 8;
+  const labelW = 75;
+  const tabW = (w - labelW - 16) / 3;
+  const savedLevel = loadProgress();
+  const currentLevel = game ? game.levelNum : 1;
+
+  for (let lv = 1; lv <= 3; lv++) {
+    const tx = labelW + (lv - 1) * (tabW + 3);
+    let state = 'locked';
+    if (lv === currentLevel) state = 'active';
+    else if (lv <= savedLevel) state = 'unlocked';
+    const lvName = LEVELS[lv - 1].name;
+    const lvText = lv + '·' + lvName;
+    const type = state === 'active' ? 'primary' :
+                 state === 'unlocked' ? 'secondary' : 'locked';
+    drawButton(levelCtx, tx, tabY, tabW, tabH, lvText, type, 60 + lv);
+  }
+}
+
+function drawLegendCanvas() {
+  resizeUICanvases();
+  const w = legendCanvas.offsetWidth;
+  const h = legendCanvas.offsetHeight;
+  if (w <= 0 || h <= 0) return;
+  legendCtx.clearRect(0, 0, w, h);
+  // Transparent — let body bg show through
+}
+
+function drawBottomBarCanvas() {
+  // Bottom bar buttons use CSS styling — no canvas background needed
+  resizeUICanvases();
+  if (!bottomCanvas) return;
+  const w = bottomCanvas.offsetWidth;
+  const h = bottomCanvas.offsetHeight;
+  if (w <= 0 || h <= 0) return;
+  bottomCtx.clearRect(0, 0, w, h);
+}
+
+function redrawAllUI() {
+  resizeUICanvases();
+  drawTopBarCanvas();
+  drawLevelCanvasFn();
+  drawLegendCanvas();
+  drawBottomBarCanvas();
+}
+
+function buildBlockLegend(levelNum) {
+  const cfg = LEVELS[levelNum - 1] || LEVELS[0];
+  const blockTypes = [...(cfg.pollutants || [])];
+  if (!blockTypes.includes(BLOCK.LOOSE_SOIL)) blockTypes.push(BLOCK.LOOSE_SOIL);
+  if (!blockTypes.includes(BLOCK.HEALTHY_FARM)) blockTypes.push(BLOCK.HEALTHY_FARM);
+
+  const row = document.getElementById('legend-row');
+  if (!row) return;
+  row.innerHTML = '';
+
+  blockTypes.forEach(type => {
+    const name = BLOCK_NAMES[type] || '未知';
+    const desc = BLOCK_DESC[type] || '';
+    const img = blockImages[type];
+
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+
+    const iconWrap = document.createElement('div');
+    iconWrap.className = 'legend-icon-wrap';
+    const cv = document.createElement('canvas');
+    cv.width = 76; cv.height = 76;
+    cv.style.width = '38px'; cv.style.height = '38px';
+    iconWrap.appendChild(cv);
+    if (img && img.complete) {
+      const ctx = cv.getContext('2d');
+      const s = Math.min(img.width, img.height);
+      const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+      ctx.drawImage(img, sx, sy, s, s, 0, 0, 76, 76);
+    } else if (img) {
+      img.addEventListener('load', () => {
+        const ctx = cv.getContext('2d');
+        const s = Math.min(img.width, img.height);
+        const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+        ctx.drawImage(img, sx, sy, s, s, 0, 0, 76, 76);
+      }, { once: true });
+    }
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'legend-name';
+    nameSpan.textContent = name;
+
+    item.appendChild(iconWrap);
+    item.appendChild(nameSpan);
+    item.addEventListener('click', () => showBlockPopup(type, name, desc));
+    row.appendChild(item);
+  });
+}
+
+function showBlockPopup(type, name, desc) {
+  const overlay = document.getElementById('popup-overlay');
+  const icon = document.getElementById('popup-icon');
+  const title = document.getElementById('popup-title');
+  const msg = document.getElementById('popup-message');
+  const quoteDiv = document.getElementById('popup-quote');
+  const btn = document.getElementById('popup-btn');
+
+  overlay.classList.add('active');
+  quoteDiv.style.display = 'none';
+
+  const img = blockImages[type];
+  if (img && img.complete) {
+    icon.innerHTML = '';
+    const cv = document.createElement('canvas');
+    cv.width = 96; cv.height = 96;
+    cv.style.width = '48px'; cv.style.height = '48px';
+    cv.style.borderRadius = '8px';
+    const ctx = cv.getContext('2d');
+    const s = Math.min(img.width, img.height);
+    const sx = (img.width - s) / 2, sy = (img.height - s) / 2;
+    ctx.drawImage(img, sx, sy, s, s, 0, 0, 96, 96);
+    icon.appendChild(cv);
+  } else {
+    icon.textContent = '📦';
+  }
+  title.textContent = name;
+  msg.textContent = desc;
+  btn.textContent = '关闭';
+  btn.className = 'summary-btn';
+  btn.onclick = () => { overlay.classList.remove('active'); };
+}
+let boardRenderSize = 6;
+let boardMargin = 0;  // dark wood frame width around the board
+
 function resizeCanvas(boardSize) {
-  cellSize = calcCellSize(boardSize);
-  const cs = cellSize * boardSize;
-  canvas.width = cs;
-  canvas.height = cs;
+  const maxWidth = Math.min(window.innerWidth - 24, 480) - 16;
+  boardMargin = Math.floor(maxWidth * 0.11);
+  cellSize = Math.floor((maxWidth - boardMargin * 2) / boardSize);
+  const cs = cellSize * boardSize + boardMargin * 2;
+  canvasLogicalSize = cs;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(cs * dpr);
+  canvas.height = Math.floor(cs * dpr);
   canvas.style.width = cs + 'px';
   canvas.style.height = cs + 'px';
   boardRenderSize = boardSize;
@@ -1001,14 +1529,12 @@ function roundRect(x, y, w, h, r) {
 }
 
 function drawBlock(x, y, size, type, r, c, scaleOverride) {
-  const pad = Math.max(1, Math.floor(size * 0.08));
+  if (!BLOCK_COLORS[type]) return;
+  const pad = Math.max(1, Math.floor(size * 0.06));
   const inner = size - pad * 2;
-  const colors = BLOCK_COLORS[type];
-  if (!colors) return;
   const br = Math.max(2, size * 0.12);
-  const wobblySeed = (r * 20 + c) * 137 + 5000;
 
-  // Compute bounce scale
+  // Compute bounce scale (game animation — preserved)
   let bounceScale = scaleOverride || 1;
   const key = animCellKey(r, c);
   const bounce = animState.bounces[key];
@@ -1034,178 +1560,99 @@ function drawBlock(x, y, size, type, r, c, scaleOverride) {
     ctx.translate(-cx, -cy);
   }
 
-  // Shadow (subtle, for depth)
+  // Shadow (subtle depth)
   ctx.shadowColor = 'rgba(0,0,0,0.18)';
   ctx.shadowBlur = size * 0.05;
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
 
-  // Wobbly rounded rect background
-  wobblyRoundRect(ctx, x + pad, y + pad, inner, inner, br, 0.018, wobblySeed);
-  ctx.fillStyle = colors.fill;
-  ctx.fill();
+  // Draw PNG block image (with rounded-rect clip for clean edges)
+  const img = blockImages[type];
+  if (img && img.complete && img.naturalWidth > 0) {
+    roundRect(x + pad, y + pad, inner, inner, br);
+    ctx.save();
+    ctx.clip();
+    ctx.drawImage(img, x + pad, y + pad, inner, inner);
+    ctx.restore();
+  } else {
+    // Fallback: simple colored rounded rect while image loads
+    const colors = BLOCK_COLORS[type];
+    roundRect(x + pad, y + pad, inner, inner, br);
+    ctx.fillStyle = colors.fill;
+    ctx.fill();
+    roundRect(x + pad, y + pad, inner, inner, br);
+    ctx.strokeStyle = colors.stroke;
+    ctx.lineWidth = Math.max(0.8, size * 0.025);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  }
 
   ctx.shadowColor = 'transparent';
   ctx.shadowBlur = 0;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
 
-  // Inner highlight (top-left light area)
-  const hlGrad = ctx.createLinearGradient(x + pad, y + pad, x + pad + inner, y + pad + inner);
-  hlGrad.addColorStop(0, colors.light);
-  hlGrad.addColorStop(0.5, colors.fill);
-  hlGrad.addColorStop(1, colors.stroke);
-  wobblyRoundRect(ctx, x + pad, y + pad, inner, inner, br, 0.018, wobblySeed);
-  ctx.fillStyle = hlGrad;
-  ctx.fill();
-
-  // Hand-drawn stroke (multi-pass offset for sketch feel)
-  wobblyRoundRect(ctx, x + pad, y + pad, inner, inner, br, 0.018, wobblySeed);
-  handStroke(ctx, colors.stroke, Math.max(0.8, size * 0.025), 2, 0.7, wobblySeed + 100);
-
-  // Texture patterns
-  const cx = x + size / 2;
-  const cy = y + size / 2;
-  const s = inner * 0.45;
-
-  switch (type) {
-    case BLOCK.COMPACTION:
-      // Crack lines
-      ctx.strokeStyle = 'rgba(62,39,35,0.5)';
-      ctx.lineWidth = Math.max(1, size * 0.025);
-      ctx.beginPath();
-      ctx.moveTo(cx - s * 0.6, cy - s * 0.7);
-      ctx.lineTo(cx + s * 0.1, cy - s * 0.1);
-      ctx.lineTo(cx + s * 0.5, cy + s * 0.6);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx - s * 0.4, cy + s * 0.5);
-      ctx.lineTo(cx + s * 0.2, cy);
-      ctx.lineTo(cx + s * 0.7, cy - s * 0.4);
-      ctx.stroke();
-      break;
-
-    case BLOCK.HEAVY_METAL:
-      // Toxic bubbles
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.beginPath(); ctx.arc(cx - s * 0.3, cy - s * 0.2, s * 0.25, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + s * 0.35, cy - s * 0.4, s * 0.18, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx - s * 0.1, cy + s * 0.4, s * 0.22, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + s * 0.4, cy + s * 0.25, s * 0.15, 0, Math.PI * 2); ctx.fill();
-      break;
-
-    case BLOCK.ORGANIC:
-      // Decay spots
-      ctx.fillStyle = 'rgba(27,94,32,0.5)';
-      ctx.beginPath(); ctx.arc(cx - s * 0.35, cy - s * 0.3, s * 0.28, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + s * 0.3, cy + s * 0.3, s * 0.32, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + s * 0.5, cy - s * 0.5, s * 0.18, 0, Math.PI * 2); ctx.fill();
-      break;
-
-    case BLOCK.DESERT:
-      // Sand grain dots (deterministic by position)
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      for (let i = 0; i < 8; i++) {
-        const dx = (seededRand(r, c, i * 2) - 0.5) * s * 1.5;
-        const dy = (seededRand(r, c, i * 2 + 1) - 0.5) * s * 1.5;
-        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, s * 0.08, 0, Math.PI * 2); ctx.fill();
-      }
-      break;
-
-    case BLOCK.SALINE:
-      // Crystal facets
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-      ctx.lineWidth = Math.max(1, size * 0.02);
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - s * 0.8);
-      ctx.lineTo(cx + s * 0.7, cy);
-      ctx.lineTo(cx, cy + s * 0.8);
-      ctx.lineTo(cx - s * 0.7, cy);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-      ctx.beginPath(); ctx.moveTo(cx - s * 0.7, cy); ctx.lineTo(cx + s * 0.7, cy); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.8); ctx.lineTo(cx, cy + s * 0.8); ctx.stroke();
-      break;
-
-    case BLOCK.LOOSE_SOIL:
-      // Grain texture (deterministic by position)
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      for (let i = 0; i < 5; i++) {
-        const dx = (seededRand(r, c, i * 2) - 0.5) * s * 1.3;
-        const dy = (seededRand(r, c, i * 2 + 1) - 0.5) * s * 1.3;
-        ctx.fillRect(cx + dx - s * 0.06, cy + dy - s * 0.06, s * 0.18, s * 0.12);
-      }
-      break;
-  }
-
-  // Draw type icon (blended with pattern) — skip loose_soil (original pattern only)
-  const icon = BLOCK_ICONS[type];
-  if (icon && type !== BLOCK.LOOSE_SOIL) {
-    const iconSize = Math.max(12, inner * 0.55);
-    ctx.font = `${iconSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    // Subtle glow behind icon for readability
-    ctx.shadowColor = 'rgba(255,255,255,0.35)';
-    ctx.shadowBlur = iconSize * 0.2;
-    // Healthy farmland: full opacity; others: high blend
-    ctx.globalAlpha = (type === BLOCK.HEALTHY_FARM) ? 1.0 : 0.85;
-    ctx.fillStyle = '#000';
-    ctx.fillText(icon, cx, cy + iconSize * 0.02);
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-  }
-
   ctx.restore();
 }
 
 function drawBoard(board, highlightCells = null) {
   const size = board.length;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, canvasLogicalSize, canvasLogicalSize);
 
-  // Parchment background with grain texture
-  const bgGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  bgGrad.addColorStop(0, '#FDFBC8');
-  bgGrad.addColorStop(0.5, '#F7F2B1');
-  bgGrad.addColorStop(1, '#E8DF98');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const boardW = size * cellSize;
+  const boardH = size * cellSize;
+  const M = boardMargin;  // shorthand for frame width
 
-  // High-density noise texture (parchment grain)
-  const noiseCount = Math.floor(canvas.width * canvas.height * 0.03);
-  speckleNoise(ctx, 0, 0, canvas.width, canvas.height, noiseCount, 'rgba(180,165,100,A)', [0.02, 0.10], 7700);
-
-  // Hand-drawn grid lines (wobbly)
-  ctx.strokeStyle = 'rgba(139,110,60,0.2)';
-  ctx.lineWidth = 0.6;
-  ctx.lineCap = 'round';
-  for (let i = 0; i <= size; i++) {
-    const pos = i * cellSize;
-    ctx.beginPath();
-    ctx.moveTo(pos, 0);
-    wobblyLine(ctx, pos, 0, pos, canvas.height, 0.015, 7800 + i);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, pos);
-    wobblyLine(ctx, 0, pos, canvas.width, pos, 0.015, 7900 + i);
-    ctx.stroke();
+  // ═══════════════════════════════════════════════
+  // 1. BOARD FLOOR BACKGROUND (image replaces wood frame + parchment)
+  // ═══════════════════════════════════════════════
+  if (boardBgReady) {
+    ctx.drawImage(boardBgImage, 0, 0, canvasLogicalSize, canvasLogicalSize);
+  } else {
+    // Fallback: placeholder while image loads (lighter tone — clearly different from old wood frame)
+    const fallbackGrad = ctx.createLinearGradient(0, 0, 0, canvasLogicalSize);
+    fallbackGrad.addColorStop(0, '#8B7355');
+    fallbackGrad.addColorStop(1, '#6B5540');
+    ctx.fillStyle = fallbackGrad;
+    ctx.fillRect(0, 0, canvasLogicalSize, canvasLogicalSize);
   }
 
-  // Subtle darker border between cells (secondary wobbly grid)
-  ctx.strokeStyle = 'rgba(100,80,50,0.12)';
-  ctx.lineWidth = 0.4;
-  for (let i = 0; i <= size; i++) {
-    const pos = i * cellSize + 0.5;
-    ctx.beginPath();
-    ctx.moveTo(pos, 0);
-    wobblyLine(ctx, pos, 0, pos, canvas.height, 0.012, 8000 + i);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(0, pos);
-    wobblyLine(ctx, 0, pos, canvas.width, pos, 0.012, 8100 + i);
-    ctx.stroke();
+  // ═══════════════════════════════════════════════
+  // 2. CELL BACKGROUNDS (nearly transparent — floor image shows through)
+  // ═══════════════════════════════════════════════
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      const cellX = M + c * cellSize;
+      const cellY = M + r * cellSize;
+      const cellPad = cellSize * 0.07;
+      const cellInner = cellSize - cellPad * 2;
+      const cellSeed = 8500 + r * 20 + c;
+
+      wobblyRoundRect(ctx, cellX + cellPad, cellY + cellPad, cellInner, cellInner, cellInner * 0.10, 0.028, cellSeed);
+
+      // Very faint cell fill — barely visible, lets floor image dominate
+      const cellGrad = ctx.createLinearGradient(cellX + cellPad, cellY + cellPad, cellX + cellPad, cellY + cellPad + cellInner);
+      cellGrad.addColorStop(0, 'rgba(255,253,235,0.08)');
+      cellGrad.addColorStop(0.5, 'rgba(248,242,215,0.04)');
+      cellGrad.addColorStop(1, 'rgba(238,228,195,0.06)');
+      ctx.fillStyle = cellGrad;
+      ctx.fill();
+
+      // Cell border (thin, wobbly) — grid lines
+      ctx.strokeStyle = 'rgba(80,65,45,0.30)';
+      ctx.lineWidth = 0.6 + hashXY(cellSeed, 0, 870) * 0.4;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Subtle inner shadow for depth
+      wobblyRoundRect(ctx, cellX + cellPad + 1.2, cellY + cellPad + 0.8, cellInner - 2.4, cellInner - 1.6, cellInner * 0.09, 0.030, cellSeed + 1);
+      ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
   }
 
   // Build drop & skip maps from animation state
@@ -1215,6 +1662,11 @@ function drawBoard(board, highlightCells = null) {
     for (const cell of animState.elim.cells) {
       skipCells.add(animCellKey(cell.r, cell.c));
     }
+  }
+  // Also skip cells being swapped — their backgrounds already show, blocks drawn at interpolated pos
+  if (animState.swap) {
+    skipCells.add(animCellKey(animState.swap.r1, animState.swap.c1));
+    skipCells.add(animCellKey(animState.swap.r2, animState.swap.c2));
   }
   if (animState.drops) {
     const t = animState.drops.progress || 0;
@@ -1235,9 +1687,9 @@ function drawBoard(board, highlightCells = null) {
 
       if (dropMap[key]) {
         // Currently dropping — draw at interpolated position
-        drawBlock(c * cellSize, dropMap[key].currentR * cellSize, cellSize, dropMap[key].type, r, c);
+        drawBlock(M + c * cellSize, M + dropMap[key].currentR * cellSize, cellSize, dropMap[key].type, r, c);
       } else if (board[r][c]) {
-        drawBlock(c * cellSize, r * cellSize, cellSize, board[r][c], r, c);
+        drawBlock(M + c * cellSize, M + r * cellSize, cellSize, board[r][c], r, c);
       }
     }
   }
@@ -1248,17 +1700,13 @@ function drawBoard(board, highlightCells = null) {
     const elapsed = performance.now() - s.startTime;
     const t = Math.min(1, elapsed / s.duration);
     const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    const x1 = s.c1 * cellSize, y1 = s.r1 * cellSize;
-    const x2 = s.c2 * cellSize, y2 = s.r2 * cellSize;
+    const x1 = M + s.c1 * cellSize, y1 = M + s.r1 * cellSize;
+    const x2 = M + s.c2 * cellSize, y2 = M + s.r2 * cellSize;
     const px1 = x1 + (x2 - x1) * ease;
     const py1 = y1 + (y2 - y1) * ease;
     const px2 = x2 + (x1 - x2) * ease;
     const py2 = y2 + (y1 - y2) * ease;
-    // Clear backgrounds at old positions
-    ctx.fillStyle = '#F7F2B1';
-    ctx.fillRect(x1 + 1, y1 + 1, cellSize - 2, cellSize - 2);
-    ctx.fillRect(x2 + 1, y2 + 1, cellSize - 2, cellSize - 2);
-    // Draw swapped blocks at interpolated positions
+    // Cell backgrounds already drawn — just draw swapped blocks at interpolated positions
     drawBlock(px1, py1, cellSize, board[s.r1][s.c1], s.r1, s.c1);
     drawBlock(px2, py2, cellSize, board[s.r2][s.c2], s.r2, s.c2);
   }
@@ -1267,8 +1715,8 @@ function drawBoard(board, highlightCells = null) {
   if (animState.elim) {
     const t = Math.min(1, (performance.now() - animState.elim.startTime) / animState.elim.duration);
     for (const cell of animState.elim.cells) {
-      const cx = cell.c * cellSize + cellSize / 2;
-      const cy = cell.r * cellSize + cellSize / 2;
+      const cx = M + cell.c * cellSize + cellSize / 2;
+      const cy = M + cell.r * cellSize + cellSize / 2;
       const alpha = Math.max(0, 1 - t);
       const glowR = cellSize * 0.45 * (1 + t * 0.5);
       ctx.save();
@@ -1280,7 +1728,7 @@ function drawBoard(board, highlightCells = null) {
       ctx.arc(cx, cy, glowR, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
-      drawBlock(cell.c * cellSize, cell.r * cellSize, cellSize, cell.type, cell.r, cell.c, 1 + t * 0.35);
+      drawBlock(M + cell.c * cellSize, M + cell.r * cellSize, cellSize, cell.type, cell.r, cell.c, 1 + t * 0.35);
     }
   }
 
@@ -1289,7 +1737,7 @@ function drawBoard(board, highlightCells = null) {
     for (const { r, c } of highlightCells) {
       ctx.strokeStyle = '#E1CB6B';
       ctx.lineWidth = Math.max(2, cellSize * 0.06);
-      ctx.strokeRect(c * cellSize + 2, r * cellSize + 2, cellSize - 4, cellSize - 4);
+      ctx.strokeRect(M + c * cellSize + 2, M + r * cellSize + 2, cellSize - 4, cellSize - 4);
     }
   }
 
@@ -1321,8 +1769,8 @@ function spawnParticles(cx, cy, count, color, spread, life) {
 
 function spawnElimParticles(cells, color) {
   for (const cell of cells) {
-    const cx = cell.c * cellSize + cellSize / 2;
-    const cy = cell.r * cellSize + cellSize / 2;
+    const cx = boardMargin + cell.c * cellSize + cellSize / 2;
+    const cy = boardMargin + cell.r * cellSize + cellSize / 2;
     spawnParticles(cx, cy, 8, color, cellSize * 0.12, 400);
   }
 }
@@ -1545,8 +1993,8 @@ const game = {
     resizeCanvas(cfg.size);
     this.render();
     this.updateUI();
-    updateCellInfo(null);
     document.getElementById('btn-next').style.display = 'none';
+    drawBottomBarCanvas();
 
     // Clear animation state
     animState.swap = null;
@@ -1555,6 +2003,7 @@ const game = {
     animState.bounces = {};
     clearFirstTap();
     updateLevelSelector();
+    buildBlockLegend(levelNum);
 
     if (cfg.intro) {
       showLevelIntro(cfg.intro, cfg.hasGuide ? () => guideSystem.start() : null);
@@ -1581,11 +2030,11 @@ const game = {
 
     // Color warning when low
     if (grainPercent <= 20) {
-      grainBar.style.background = 'linear-gradient(90deg, #E53935, #FF5252, #EF5350)';
+      grainBar.style.background = 'linear-gradient(180deg, #FF5252 0%, #E53935 50%, #C62828 100%)';
     } else if (grainPercent <= 40) {
-      grainBar.style.background = 'linear-gradient(90deg, #C4A840, #E1CB6B, #C4A840)';
+      grainBar.style.background = 'linear-gradient(180deg, #F0DC82 0%, #E1CB6B 50%, #C4A840 100%)';
     } else {
-      grainBar.style.background = 'linear-gradient(90deg, #C4A840 0%, #E1CB6B 30%, #F0DC82 60%, #E1CB6B 100%)';
+      grainBar.style.background = 'linear-gradient(180deg, #F0DC82 0%, #E1CB6B 35%, #C4A840 70%, #A88920 100%)';
     }
 
     // Steps warning
@@ -1597,6 +2046,9 @@ const game = {
     } else {
       stepsEl.style.color = '#F0DC82';
     }
+
+    // Redraw hand-drawn top bar canvas
+    drawTopBarCanvas();
   },
 
   async handleSwap(r1, c1, r2, c2) {
@@ -1621,7 +2073,6 @@ const game = {
     }
 
     initAudio();
-    updateCellInfo(null);
     this.state = STATE.SWAPPING;
 
     // Animate swap
@@ -1705,8 +2156,8 @@ const game = {
       sfxReclaim();
       for (const match of matchGroups) {
         if (match.type === BLOCK.LOOSE_SOIL) {
-          const cx = match.cells[1].c * cellSize + cellSize / 2;
-          const cy = match.cells[1].r * cellSize + cellSize / 2;
+          const cx = boardMargin + match.cells[1].c * cellSize + cellSize / 2;
+          const cy = boardMargin + match.cells[1].r * cellSize + cellSize / 2;
           spawnParticles(cx, cy, 20, '#F0DC82', cellSize * 0.2, 700);
         }
       }
@@ -1864,44 +2315,17 @@ let touchStartX = 0, touchStartY = 0;
 let touchStartCell = null;
 let hasDragged = false;
 let firstTapCell = null;   // For two-tap swap
-let infoClearTimer = null;
 
 function getCellFromClient(clientX, clientY) {
   const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const col = Math.floor((clientX - rect.left) * scaleX / cellSize);
-  const row = Math.floor((clientY - rect.top) * scaleY / cellSize);
+  const scaleX = canvasLogicalSize / rect.width;
+  const scaleY = canvasLogicalSize / rect.height;
+  const col = Math.floor(((clientX - rect.left) * scaleX - boardMargin) / cellSize);
+  const row = Math.floor(((clientY - rect.top) * scaleY - boardMargin) / cellSize);
   if (row >= 0 && row < game.board.length && col >= 0 && col < game.board[0].length) {
     return { r: row, c: col };
   }
   return null;
-}
-
-function updateCellInfo(cell) {
-  const infoBar = document.getElementById('cell-info');
-  const iconEl = document.getElementById('cell-info-icon');
-  const nameEl = document.getElementById('cell-info-name');
-  const descEl = document.getElementById('cell-info-desc');
-  if (!cell || !game.board[cell.r] || !game.board[cell.r][cell.c]) {
-    infoBar.classList.remove('highlight');
-    iconEl.textContent = '📦';
-    nameEl.textContent = '点击格子查看信息';
-    descEl.textContent = '';
-    return;
-  }
-  const type = game.board[cell.r][cell.c];
-  const name = BLOCK_NAMES[type] || '未知';
-  const desc = BLOCK_DESC[type] || '';
-  const icons = {
-    [BLOCK.COMPACTION]: '🪨', [BLOCK.HEAVY_METAL]: '☠️', [BLOCK.ORGANIC]: '🦠',
-    [BLOCK.DESERT]: '🏜️', [BLOCK.SALINE]: '💎', [BLOCK.LOOSE_SOIL]: '🟫',
-    [BLOCK.HEALTHY_FARM]: '🌱'
-  };
-  infoBar.classList.add('highlight');
-  iconEl.textContent = icons[type] || '📦';
-  nameEl.textContent = name;
-  descEl.textContent = desc;
 }
 
 function clearFirstTap() {
@@ -1915,7 +2339,6 @@ function handlePointerDown(clientX, clientY) {
   const cell = getCellFromClient(clientX, clientY);
   if (!cell) {
     clearFirstTap();
-    updateCellInfo(null);
     return;
   }
 
@@ -1924,22 +2347,17 @@ function handlePointerDown(clientX, clientY) {
   touchStartCell = cell;
   hasDragged = false;
 
-  // Clear info auto-hide timer
-  if (infoClearTimer) { clearTimeout(infoClearTimer); infoClearTimer = null; }
-
   // Two-tap swap: if we already have a first tap, check adjacency
   if (firstTapCell) {
     if (firstTapCell.r === cell.r && firstTapCell.c === cell.c) {
       // Same cell — deselect
       clearFirstTap();
-      updateCellInfo(null);
       return;
     }
     if (isAdjacent(firstTapCell.r, firstTapCell.c, cell.r, cell.c)) {
       // Adjacent — swap!
       game.handleSwap(firstTapCell.r, firstTapCell.c, cell.r, cell.c);
       clearFirstTap();
-      updateCellInfo(null);
       touchStartCell = null;
       return;
     }
@@ -1950,16 +2368,7 @@ function handlePointerDown(clientX, clientY) {
   firstTapCell = cell;
   game.selectedCell = cell;
   game.render([cell]);
-  updateCellInfo(cell);
   addBounce(cell.r, cell.c, 1.0);
-
-  // Auto-clear info after 4 seconds
-  infoClearTimer = setTimeout(() => {
-    if (game.state === STATE.IDLE && firstTapCell && firstTapCell.r === cell.r && firstTapCell.c === cell.c) {
-      clearFirstTap();
-      updateCellInfo(null);
-    }
-  }, 4000);
 }
 
 function handlePointerMove(clientX, clientY) {
@@ -1971,7 +2380,6 @@ function handlePointerMove(clientX, clientY) {
   if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
     hasDragged = true;
     clearFirstTap();
-    updateCellInfo(null);
 
     let targetCell = null;
     if (Math.abs(dx) > Math.abs(dy)) {
@@ -2033,7 +2441,6 @@ canvas.addEventListener('mouseleave', (e) => {
   if (touchStartCell && !hasDragged) {
     game.selectedCell = null;
     game.render();
-    updateCellInfo(null);
   }
   touchStartCell = null;
   clearFirstTap();
@@ -2074,6 +2481,7 @@ function showPopup(type, message) {
     // Show bottom next button too
     if (game.levelNum < 3) {
       document.getElementById('btn-next').style.display = 'block';
+      drawBottomBarCanvas();
     }
     btn.onclick = () => {
       hidePopup();
@@ -2239,93 +2647,37 @@ function renderBlockPreviews(container, types, highlightType) {
 
 function drawBlockPreview(pctx, x, y, size, type) {
   var ctx = pctx;
-  var colors = BLOCK_COLORS[type];
-  if (!colors) return;
-  var pad = Math.max(1, Math.floor(size * 0.08));
+  if (!BLOCK_COLORS[type]) return;
+  var pad = Math.max(1, Math.floor(size * 0.06));
   var inner = size - pad * 2;
-  var cx = x + size / 2, cy = y + size / 2;
-  var s = inner * 0.45;
+  var br = Math.max(2, size * 0.12);
 
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.2)';
   ctx.shadowBlur = size * 0.05;
   ctx.shadowOffsetX = 1; ctx.shadowOffsetY = 1;
 
-  roundRectCtx(ctx, x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
-  ctx.fillStyle = colors.fill;
-  ctx.fill();
+  // Draw PNG block image (with rounded-rect clip for clean edges)
+  var img = blockImages[type];
+  if (img && img.complete && img.naturalWidth > 0) {
+    roundRectCtx(ctx, x + pad, y + pad, inner, inner, br);
+    ctx.save();
+    ctx.clip();
+    ctx.drawImage(img, x + pad, y + pad, inner, inner);
+    ctx.restore();
+  } else {
+    // Fallback: simple colored rounded rect while image loads
+    var colors = BLOCK_COLORS[type];
+    roundRectCtx(ctx, x + pad, y + pad, inner, inner, br);
+    ctx.fillStyle = colors.fill;
+    ctx.fill();
+    roundRectCtx(ctx, x + pad, y + pad, inner, inner, br);
+    ctx.strokeStyle = colors.stroke;
+    ctx.lineWidth = Math.max(1, size * 0.03);
+    ctx.stroke();
+  }
+
   ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
-
-  var hlGrad = ctx.createLinearGradient(x + pad, y + pad, x + pad + inner, y + pad + inner);
-  hlGrad.addColorStop(0, colors.light);
-  hlGrad.addColorStop(0.5, colors.fill);
-  hlGrad.addColorStop(1, colors.stroke);
-  roundRectCtx(ctx, x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
-  ctx.fillStyle = hlGrad;
-  ctx.fill();
-
-  roundRectCtx(ctx, x + pad, y + pad, inner, inner, Math.max(2, size * 0.12));
-  ctx.strokeStyle = colors.stroke;
-  ctx.lineWidth = Math.max(1, size * 0.03);
-  ctx.stroke();
-
-  switch (type) {
-    case BLOCK.COMPACTION:
-      ctx.strokeStyle = 'rgba(62,39,35,0.5)'; ctx.lineWidth = Math.max(0.8, size * 0.02);
-      ctx.beginPath(); ctx.moveTo(cx - s*0.6, cy - s*0.7); ctx.lineTo(cx + s*0.1, cy - s*0.1); ctx.lineTo(cx + s*0.5, cy + s*0.6); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx - s*0.4, cy + s*0.5); ctx.lineTo(cx + s*0.2, cy); ctx.lineTo(cx + s*0.7, cy - s*0.4); ctx.stroke();
-      break;
-    case BLOCK.HEAVY_METAL:
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      ctx.beginPath(); ctx.arc(cx - s*0.3, cy - s*0.2, s*0.25, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + s*0.35, cy - s*0.4, s*0.18, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx - s*0.1, cy + s*0.4, s*0.22, 0, Math.PI*2); ctx.fill();
-      break;
-    case BLOCK.ORGANIC:
-      ctx.fillStyle = 'rgba(27,94,32,0.5)';
-      ctx.beginPath(); ctx.arc(cx - s*0.35, cy - s*0.3, s*0.28, 0, Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(cx + s*0.3, cy + s*0.3, s*0.32, 0, Math.PI*2); ctx.fill();
-      break;
-    case BLOCK.DESERT:
-      ctx.fillStyle = 'rgba(255,255,255,0.4)';
-      for (var i = 0; i < 6; i++) {
-        var dx = ((i*17%13)/13 - 0.5) * s * 1.5;
-        var dy = ((i*31%17)/17 - 0.5) * s * 1.5;
-        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, s*0.08, 0, Math.PI*2); ctx.fill();
-      }
-      break;
-    case BLOCK.SALINE:
-      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = Math.max(0.8, size * 0.02);
-      ctx.beginPath(); ctx.moveTo(cx, cy - s*0.8); ctx.lineTo(cx + s*0.7, cy); ctx.lineTo(cx, cy + s*0.8); ctx.lineTo(cx - s*0.7, cy); ctx.closePath(); ctx.stroke();
-      break;
-    case BLOCK.LOOSE_SOIL:
-      ctx.fillStyle = 'rgba(139,119,101,0.4)';
-      for (var i = 0; i < 5; i++) {
-        var dx = ((i*23%11)/11 - 0.5) * s * 1.2;
-        var dy = ((i*37%19)/19 - 0.5) * s * 1.2;
-        ctx.beginPath(); ctx.arc(cx + dx, cy + dy, s*0.1, 0, Math.PI*2); ctx.fill();
-      }
-      break;
-    case BLOCK.HEALTHY_FARM:
-      ctx.fillStyle = 'rgba(93,64,55,0.35)';
-      ctx.beginPath(); ctx.arc(cx, cy + s*0.25, s*0.55, 0, Math.PI*2); ctx.fill();
-      var iconSize = Math.max(16, size*0.5);
-      ctx.font = iconSize + 'px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#000'; ctx.fillText('\u{1F331}', cx, cy + size*0.02);
-      break;
-  }
-
-  var icon = BLOCK_ICONS[type];
-  if (icon && type !== BLOCK.LOOSE_SOIL && type !== BLOCK.HEALTHY_FARM) {
-    var iconSz = Math.max(10, size * 0.4);
-    ctx.font = iconSz + 'px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.globalAlpha = 0.85;
-    ctx.fillStyle = '#000';
-    ctx.fillText(icon, cx, cy + iconSz * 0.02);
-    ctx.globalAlpha = 1;
-  }
   ctx.restore();
 }
 
@@ -2669,10 +3021,12 @@ function positionTutorialTooltip(targetCells) {
   const canvasRect = canvasEl.getBoundingClientRect();
 
   // Calculate screen positions of the two highlighted cells
+  const scaleX = canvasEl.width / canvasRect.width;
+  const scaleY = canvasEl.height / canvasRect.height;
   const cellPositions = targetCells.map(function(cell) {
     return {
-      x: canvasRect.left + cell.c * cellSize + cellSize / 2,
-      y: canvasRect.top + cell.r * cellSize + cellSize / 2
+      x: canvasRect.left + (boardMargin + cell.c * cellSize + cellSize / 2) / scaleX,
+      y: canvasRect.top + (boardMargin + cell.r * cellSize + cellSize / 2) / scaleY
     };
   });
 
@@ -2855,10 +3209,11 @@ const tutorialSystem = {
     if (guideSystem.completed && this.phase === 'done') return;
     const now = performance.now();
     const cs = cellSize;
+    const M = boardMargin;
     // Draw directional connector between the two cells
     const [a, b] = this.targetCells;
-    const ax = a.c * cs + cs / 2, ay = a.r * cs + cs / 2;
-    const bx = b.c * cs + cs / 2, by = b.r * cs + cs / 2;
+    const ax = M + a.c * cs + cs / 2, ay = M + a.r * cs + cs / 2;
+    const bx = M + b.c * cs + cs / 2, by = M + b.r * cs + cs / 2;
     const midX = (ax + bx) / 2, midY = (ay + by) / 2;
     // Animated arrow between cells
     const arrowBob = Math.sin(now / 400) * 4;
@@ -2872,7 +3227,7 @@ const tutorialSystem = {
     ctx.fillText('👇', midX, midY + arrowBob);
     ctx.restore();
     const highlightCell = (cell, phaseOffset) => {
-      const x = cell.c * cs, y = cell.r * cs;
+      const x = M + cell.c * cs, y = M + cell.r * cs;
       const pad = 1;
       const pulseSlow = 0.5 + 0.5 * Math.sin(now / 400 + phaseOffset);
       const pulseFast = 0.5 + 0.5 * Math.sin(now / 180 + phaseOffset);
@@ -3018,6 +3373,9 @@ function updateLevelSelector() {
       btn.disabled = true;
     }
   });
+
+  // Redraw hand-drawn level selector canvas
+  drawLevelCanvasFn();
 }
 
 // Level button click handlers
@@ -3068,17 +3426,22 @@ document.getElementById('btn-summary-restart').addEventListener('click', () => {
 // 16. INIT
 // ============================================================
 function startGame() {
-  const startScreen = document.getElementById('start-screen');
-  startScreen.classList.add('hidden');
-
   const savedLevel = loadProgress();
   game.initLevel(savedLevel);
   updateLevelSelector();
+
+  // Initial UI canvas render — double rAF ensures post-layout sizing
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      redrawAllUI();
+    });
+  });
 
   // Handle resize
   window.addEventListener('resize', () => {
     resizeCanvas(game.levelConfig.size);
     game.render();
+    redrawAllUI();
   });
 
   console.log('🌾 沃土新生 — Ready');
@@ -3087,11 +3450,7 @@ function startGame() {
   console.log('目标: 复耕', game.target, '块健康耕地');
 }
 
-function init() {
-  document.getElementById('btn-start-game').addEventListener('click', startGame);
-}
-
-init();
+// startGame() is called by the preloader (onAllImagesReady) after all images load
 </script>
 </body>
 </html>
