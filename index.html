@@ -1250,9 +1250,23 @@ PRELOAD_IMAGES.forEach((item) => {
   }
 });
 
+  // Failsafe: if any image stalls (neither onload nor onerror fires), force-complete after 8s
+  let preloadFailsafeTimer = setTimeout(() => {
+    if (preloadAllReady) return;
+    console.warn('Preloader failsafe triggered — ' + preloadDone + '/' + preloadTotal + ' images counted, forcing completion');
+    // Count any images that haven't been counted yet (stalled)
+    PRELOAD_IMAGES.forEach((item) => {
+      if (!preloadCounted.has(item.key)) {
+        console.warn('  Forcing: ' + item.key);
+        markImageLoaded(item.key, null);
+      }
+    });
+  }, 8000);
+
 function onAllImagesReady() {
   if (preloadAllReady) return;
   preloadAllReady = true;
+  clearTimeout(preloadFailsafeTimer);
   console.log('All images loaded — starting game');
 
   // Populate legacy references for backward compatibility
