@@ -847,23 +847,35 @@ function processMatches(board, matchGroups) {
 // 6. GRAVITY — 重力掉落与填充
 // ============================================================
 function applyGravity(board, pollutantTypes) {
+  // Vertical gravity with HEALTHY_FARM blocks acting as immovable obstacles.
+  // Movable blocks (non-null, non-HEALTHY_FARM) fall past empty cells but
+  // cannot pass through HEALTHY_FARM blocks.
   const size = board.length;
   const newBoard = createEmptyBoard(size);
 
   for (let c = 0; c < size; c++) {
-    // Collect non-null blocks from bottom to top
-    const blocks = [];
+    // Collect movable blocks from bottom to top (skip HEALTHY_FARM)
+    const movable = [];
+    const healthyPositions = [];
     for (let r = size - 1; r >= 0; r--) {
-      if (board[r][c] !== null) {
-        blocks.push(board[r][c]);
+      if (board[r][c] === BLOCK.HEALTHY_FARM) {
+        healthyPositions.push(r);
+      } else if (board[r][c] !== null) {
+        movable.push(board[r][c]);
       }
     }
 
-    // Fill from bottom up
+    // Place HEALTHY_FARM blocks at their exact original positions
+    for (const hr of healthyPositions) {
+      newBoard[hr][c] = BLOCK.HEALTHY_FARM;
+    }
+
+    // Fill movable blocks from bottom up, skipping over healthy positions
     let blockIdx = 0;
     for (let r = size - 1; r >= 0; r--) {
-      if (blockIdx < blocks.length) {
-        newBoard[r][c] = blocks[blockIdx];
+      if (newBoard[r][c] === BLOCK.HEALTHY_FARM) continue; // don't overwrite healthy
+      if (blockIdx < movable.length) {
+        newBoard[r][c] = movable[blockIdx];
         blockIdx++;
       } else {
         // Top empty cells: fill with random pollutants
@@ -886,10 +898,93 @@ function resolveChain(board, pollutantTypes) {
     const result = processMatches(board, matchGroups);
     board = result.board;
     totalReclaimed += result.reclaimedCount;
-    board = applyGravity(board, pollutantTypes);
+    board = applyGravityAndShift(board, pollutantTypes);
   }
 
   return { board, totalReclaimed };
+}
+
+function horizontalShift(board, pollutantTypes) {
+  // Horizontal sliding: when a cell is empty AND its cell directly above is HEALTHY_FARM,
+  // try to slide a movable block from the same row (left first, then right) into the empty cell.
+  // This prevents "trapped" empty cells under healthy farmland.
+  const size = board.length;
+  const newBoard = cloneBoard(board);
+  let changed = false;
+
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (newBoard[r][c] !== null) continue;
+
+      // Check if the cell directly above is a HEALTHY_FARM block
+      const above = r > 0 ? newBoard[r - 1][c] : null;
+      if (above !== BLOCK.HEALTHY_FARM) continue;
+
+      // Try to pull from left neighbor (same row)
+      let pulled = false;
+      if (c > 0 && newBoard[r][c - 1] !== null && newBoard[r][c - 1] !== BLOCK.HEALTHY_FARM) {
+        newBoard[r][c] = newBoard[r][c - 1];
+        newBoard[r][c - 1] = null;
+        pulled = true;
+      }
+
+      // If left failed, try right neighbor (same row)
+      if (!pulled && c < size - 1 && newBoard[r][c + 1] !== null && newBoard[r][c + 1] !== BLOCK.HEALTHY_FARM) {
+        newBoard[r][c] = newBoard[r][c + 1];
+        newBoard[r][c + 1] = null;
+        pulled = true;
+      }
+
+      if (pulled) changed = true;
+    }
+  }
+
+  return { board: newBoard, changed };
+}
+
+function boardsEqual(a, b) {
+  const size = a.length;
+  for (let r = 0; r < size; r++) {
+    for (let c = 0; c < size; c++) {
+      if (a[r][c] !== b[r][c]) return false;
+    }
+  }
+  return true;
+}
+
+function applyGravityAndShift(board, pollutantTypes) {
+  // Repeatedly apply vertical gravity and horizontal shift until the board stabilizes.
+  // HEALTHY_FARM blocks are immovable and block vertical falling.
+  // Horizontal sliding fills empty cells trapped under HEALTHY_FARM.
+  const MAX_ITERATIONS = 100;
+  let currentBoard = board;
+  let changed = true;
+  let iterations = 0;
+
+  while (changed && iterations < MAX_ITERATIONS) {
+    changed = false;
+    iterations++;
+
+    // Step 1: Vertical drop (respects HEALTHY_FARM immobility)
+    const afterGravity = applyGravity(currentBoard, pollutantTypes);
+    if (!boardsEqual(afterGravity, currentBoard)) {
+      changed = true;
+      currentBoard = afterGravity;
+    }
+
+    // Step 2: Horizontal shift (fill empty cells under HEALTHY_FARM)
+    const shiftResult = horizontalShift(currentBoard, pollutantTypes);
+    if (shiftResult.changed) {
+      changed = true;
+      currentBoard = shiftResult.board;
+    }
+  }
+
+  if (iterations >= MAX_ITERATIONS) {
+    console.warn('applyGravityAndShift: max iterations reached, board may be unstable');
+  }
+
+  return currentBoard;
 }
 
 // ============================================================
@@ -2266,6 +2361,12 @@ const game = {
     if (this.state !== STATE.IDLE) return;
     if (!isAdjacent(r1, c1, r2, c2)) return;
 
+    // Reject swaps involving healthy farmland (immovable obstacle)
+    if (this.board[r1][c1] === BLOCK.HEALTHY_FARM || this.board[r2][c2] === BLOCK.HEALTHY_FARM) {
+      // Silent rejection - not counted as a move (no step/penalty deduction)
+      return;
+    }
+
     // Tutorial check: if tutorial is active, verify this is the correct swap
     if (typeof tutorialSystem !== 'undefined' && tutorialSystem.waitingForSwap) {
       if (!isSameSwap(tutorialSystem.targetCells, r1, c1, r2, c2)) {
@@ -2390,8 +2491,8 @@ const game = {
     this.render();
     this.updateUI();
 
-    // --- Compute gravity drops ---
-    const postGravity = applyGravity(this.board, this.levelConfig.pollutants);
+    // --- Compute gravity drops (with HEALTHY_FARM blocking + horizontal slide) ---
+    const postGravity = applyGravityAndShift(this.board, this.levelConfig.pollutants);
     const size = this.board.length;
     const dropItems = [];
 
