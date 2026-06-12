@@ -1206,6 +1206,7 @@ const PRELOAD_IMAGES = [
 ];
 
 const loadedImages = {};     // key → Image element
+const preloadCounted = new Set();  // prevent double-counting cached images
 let preloadTotal = PRELOAD_IMAGES.length;
 let preloadDone = 0;
 let preloadAllReady = false;
@@ -1220,34 +1221,32 @@ function updatePreloaderProgress() {
   if (preloaderText) preloaderText.textContent = '正在加载素材... ' + pct + '%';
 }
 
+function markImageLoaded(key, img) {
+  if (preloadCounted.has(key)) return;  // already counted — skip
+  preloadCounted.add(key);
+  preloadDone++;
+  loadedImages[key] = img;
+  updatePreloaderProgress();
+  if (preloadDone >= preloadTotal) {
+    onAllImagesReady();
+  }
+}
+
 PRELOAD_IMAGES.forEach((item) => {
   const img = new Image();
   img.onload = () => {
-    preloadDone++;
-    loadedImages[item.key] = img;
-    updatePreloaderProgress();
-    console.log('Loaded: ' + item.src + ' (' + preloadDone + '/' + preloadTotal + ')');
-    if (preloadDone >= preloadTotal) {
-      onAllImagesReady();
-    }
+    console.log('Loaded: ' + item.src + ' (' + (preloadCounted.size) + '/' + preloadTotal + ')');
+    markImageLoaded(item.key, img);
   };
   img.onerror = () => {
-    preloadDone++;
     console.warn('Failed to load: ' + item.src);
-    updatePreloaderProgress();
-    if (preloadDone >= preloadTotal) {
-      onAllImagesReady();
-    }
+    markImageLoaded(item.key, null);  // count failures too, so preloader doesn't stall
   };
   img.src = item.src;
-  // Belt-and-suspenders: cached images
+  // Handle cached images (complete before onload fires)
   if (img.complete && img.naturalWidth > 0) {
-    preloadDone++;
-    loadedImages[item.key] = img;
-    updatePreloaderProgress();
-    if (preloadDone >= preloadTotal) {
-      onAllImagesReady();
-    }
+    console.log('Cached: ' + item.src + ' (' + (preloadCounted.size + 1) + '/' + preloadTotal + ')');
+    markImageLoaded(item.key, img);
   }
 });
 
