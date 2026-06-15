@@ -2342,28 +2342,205 @@ function triggerRender(board, highlights = null) {
 // ============================================================
 let audioCtx = null;
 let muted = false;
-let musicPlaying = false;
-let musicNoteIdx = 0;
-let musicNextTime = 0;
-let musicTimer = null;
 
-// Pentatonic melody: C D E G A (262, 294, 330, 392, 440 Hz) across two octaves
-const PENTATONIC = [262, 294, 330, 392, 440, 523, 588, 660, 784, 880];
-const MELODY_PATTERN = [
-  // 8-bar gentle loop, farm/country feel
-  { n: 4, d: 0.4 }, { n: 2, d: 0.3 }, { n: 0, d: 0.3 }, { n: 2, d: 0.2 }, { n: 4, d: 0.5 },
-  { n: 7, d: 0.3 }, { n: 4, d: 0.3 }, { n: 2, d: 0.4 }, { n: 0, d: 0.5 },
-  { n: 5, d: 0.4 }, { n: 3, d: 0.3 }, { n: 1, d: 0.3 }, { n: 3, d: 0.2 }, { n: 5, d: 0.5 },
-  { n: 9, d: 0.3 }, { n: 7, d: 0.3 }, { n: 5, d: 0.4 }, { n: 4, d: 0.5 },
-  { n: 0, d: 0.5 }, { n: 3, d: 0.3 }, { n: 7, d: 0.2 }, { n: 8, d: 0.3 }, { n: 7, d: 0.3 },
-  { n: 5, d: 0.4 }, { n: 3, d: 0.3 }, { n: 2, d: 0.3 }, { n: 0, d: 0.5 },
-  { n: 4, d: 0.2 }, { n: 5, d: 0.2 }, { n: 7, d: 0.4 }, { n: 9, d: 0.4 }, { n: 7, d: 0.3 },
-  { n: 5, d: 0.4 }, { n: 4, d: 0.3 }, { n: 2, d: 0.5 }, { n: 0, d: 0.6 },
+// ============================================================
+// BACKGROUND MUSIC — 3-voice (melody + harmony pad + bass)
+// 4/4 time, BPM=100, C major, 16-bar loop
+// Inspired by Stardew Valley / Animal Crossing daytime music
+// ============================================================
+
+// --- Music state ---
+let musicPlaying = false;
+let musicTickId = null;       // setInterval ID for scheduler
+let musicStartTime = 0;       // audioCtx.currentTime of bar 0
+let musicMasterGain = null;   // master gain for breathing effect
+let musicScheduledLoop = -1;  // last scheduled loop index
+
+// --- BPM & timing ---
+var MUSIC_BPM = 100;
+var MUSIC_BEAT = 60 / MUSIC_BPM;       // 0.6s per quarter note
+var MUSIC_BAR = MUSIC_BEAT * 4;        // 2.4s per bar (4/4)
+var MUSIC_LOOP_BARS = 16;
+var MUSIC_LOOP_SEC = MUSIC_LOOP_BARS * MUSIC_BAR; // 38.4s
+
+// --- Chord definitions (C major: I, V, vi, IV) ---
+// [root (bass oct), third, fifth] — frequencies in Hz
+var CHORDS = {
+  'I':  { root: 65.4,  third: 164.8, fifth: 196.0, high: 261.6 },  // C: C2 E3 G3 C4
+  'V':  { root: 98.0,  third: 123.5, fifth: 146.8, high: 196.0 },  // G: G2 B2 D3 G3
+  'vi': { root: 110.0, third: 130.8, fifth: 164.8, high: 220.0 },  // Am: A2 C3 E3 A3
+  'IV': { root: 87.3,  third: 110.0, fifth: 130.8, high: 174.6 },  // F: F2 A2 C3 F3
+};
+
+// 16-bar chord progression (each chord holds 2 bars)
+var CHORD_SEQ = [
+  'I','I','V','V','vi','vi','IV','IV',
+  'I','I','V','V','vi','vi','IV','I'
 ];
+
+// --- Melody: [startBar, beatInBar, freqHz, durBeats] ---
+// 16 bars, C pentatonic (C5=523 D5=587 E5=659 G5=784 A5=880 C6=1047)
+// Dotted rhythms for bouncy, pastoral feel
+var MELODY = [
+  // Phrase A: bars 0-3 (C-C-G-G) — bright opening
+  [0, 0.0, 523, 1.5], [0, 1.5, 587, 0.5], [0, 2.0, 659, 0.5], [0, 2.5, 784, 0.5], [0, 3.0, 659, 1.0],
+  [1, 0.0, 587, 0.5], [1, 0.5, 523, 0.5], [1, 1.0, 659, 1.0], [1, 2.0, 523, 2.0],
+  [2, 0.0, 587, 1.5], [2, 1.5, 659, 0.5], [2, 2.0, 587, 0.5], [2, 2.5, 523, 0.5], [2, 3.0, 440, 1.0],
+  [3, 0.0, 392, 1.0], [3, 1.0, 440, 0.5], [3, 1.5, 523, 0.5], [3, 2.0, 587, 2.0],
+  // Phrase B: bars 4-7 (Am-Am-F-F) — emotional rise
+  [4, 0.0, 659, 1.5], [4, 1.5, 523, 0.5], [4, 2.0, 587, 0.5], [4, 2.5, 659, 0.5], [4, 3.0, 784, 1.0],
+  [5, 0.0, 880, 1.0], [5, 1.0, 784, 0.5], [5, 1.5, 659, 0.5], [5, 2.0, 523, 2.0],
+  [6, 0.0, 880, 1.0], [6, 1.0, 784, 0.5], [6, 1.5, 659, 0.5], [6, 2.0, 523, 0.5], [6, 2.5, 587, 0.5], [6, 3.0, 523, 1.0],
+  [7, 0.0, 440, 1.0], [7, 1.0, 523, 0.5], [7, 1.5, 659, 0.5], [7, 2.0, 523, 2.0],
+  // Phrase A': bars 8-11 (C-C-G-G) — variation with octave jumps
+  [8, 0.0, 523, 0.5], [8, 0.5, 1047, 1.0], [8, 1.5, 880, 0.5], [8, 2.0, 784, 1.0], [8, 3.0, 659, 1.0],
+  [9, 0.0, 587, 0.5], [9, 0.5, 523, 1.5], [9, 2.0, 659, 2.0],
+  [10, 0.0, 587, 0.5], [10, 0.5, 440, 0.5], [10, 1.0, 587, 1.0], [10, 2.0, 659, 0.5], [10, 2.5, 784, 0.5], [10, 3.0, 659, 1.0],
+  [11, 0.0, 587, 1.0], [11, 1.0, 392, 0.5], [11, 1.5, 440, 0.5], [11, 2.0, 523, 2.0],
+  // Phrase B': bars 12-15 (Am-Am-F-C) — graceful resolution
+  [12, 0.0, 659, 0.5], [12, 0.5, 880, 1.0], [12, 1.5, 784, 0.5], [12, 2.0, 659, 0.5], [12, 2.5, 523, 0.5], [12, 3.0, 659, 1.0],
+  [13, 0.0, 784, 1.5], [13, 1.5, 659, 0.5], [13, 2.0, 523, 2.0],
+  [14, 0.0, 880, 0.5], [14, 0.5, 784, 0.5], [14, 1.0, 659, 1.0], [14, 2.0, 587, 0.5], [14, 2.5, 523, 0.5], [14, 3.0, 440, 1.0],
+  [15, 0.0, 392, 0.5], [15, 0.5, 523, 1.5], [15, 2.0, 659, 0.5], [15, 2.5, 523, 1.5],
+];
+
+// --- Single music note ---
+function playMusicNote(freq, startTime, endTime, type, vol, filterFreq) {
+  if (!audioCtx || muted) return;
+  if (startTime < audioCtx.currentTime - 0.05) return; // already passed
+
+  var osc = audioCtx.createOscillator();
+  var gain = audioCtx.createGain();
+  var dur = endTime - startTime;
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startTime);
+
+  // Gentle ADSR-like envelope
+  gain.gain.setValueAtTime(0, startTime);
+  if (dur > 1.5) {
+    // Sustained notes (harmony pads, bass)
+    gain.gain.linearRampToValueAtTime(vol, startTime + 0.03);
+    gain.gain.setValueAtTime(vol * 0.8, startTime + dur * 0.85);
+    gain.gain.linearRampToValueAtTime(0, endTime);
+  } else {
+    // Short notes (melody) — quick attack, gentle decay
+    gain.gain.linearRampToValueAtTime(vol, startTime + 0.01);
+    gain.gain.setValueAtTime(vol * 0.6, startTime + dur * 0.55);
+    gain.gain.linearRampToValueAtTime(0, endTime);
+  }
+
+  var output = osc;
+  if (filterFreq && filterFreq > 0) {
+    var filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(filterFreq, startTime);
+    osc.connect(filter);
+    output = filter;
+  }
+
+  output.connect(gain);
+  gain.connect(musicMasterGain || audioCtx.destination);
+  osc.start(startTime);
+  osc.stop(endTime + 0.03);
+}
+
+// --- Schedule all 3 voices for one loop iteration ---
+function scheduleAllVoices(loopStartTime) {
+  if (!audioCtx) return;
+
+  // ---- Melody (triangle wave, bell-like) ----
+  for (var i = 0; i < MELODY.length; i++) {
+    var m = MELODY[i];
+    var t0 = loopStartTime + m[0] * MUSIC_BAR + m[1] * MUSIC_BEAT;
+    var t1 = t0 + m[3] * MUSIC_BEAT;
+    playMusicNote(m[2], t0, t1, 'triangle', 0.08, 0);
+  }
+
+  // ---- Bass (sine wave, simple root+5th pattern) ----
+  for (var bar = 0; bar < MUSIC_LOOP_BARS; bar++) {
+    var chord = CHORDS[CHORD_SEQ[bar]];
+    if (!chord) continue;
+    var barStart = loopStartTime + bar * MUSIC_BAR;
+    // Beat 0: root note
+    playMusicNote(chord.root, barStart, barStart + MUSIC_BEAT * 1.8, 'sine', 0.06, 0);
+    // Beat 2: alternating root or fifth
+    var bass2 = (bar % 2 === 0) ? chord.fifth : chord.root;
+    playMusicNote(bass2, barStart + 2 * MUSIC_BEAT, barStart + MUSIC_BEAT * 3.8, 'sine', 0.05, 0);
+  }
+
+  // ---- Harmony pad (soft sawtooth, low-pass filtered, changes every 2 bars) ----
+  for (var bar = 0; bar < MUSIC_LOOP_BARS; bar += 2) {
+    var chord = CHORDS[CHORD_SEQ[bar]];
+    if (!chord) continue;
+    var t0 = loopStartTime + bar * MUSIC_BAR;
+    var t1 = t0 + 2 * MUSIC_BAR; // hold for 2 bars
+    // Soft sawtooth with low-pass at 400Hz → warm string-pad tone
+    playMusicNote(chord.third, t0, t1, 'sawtooth', 0.025, 400);
+    playMusicNote(chord.fifth, t0, t1, 'sawtooth', 0.022, 400);
+    playMusicNote(chord.high,  t0, t1, 'sawtooth', 0.018, 400);
+  }
+}
+
+// --- Master gain breathing LFO (gentle 4-bar swell) ---
+function updateMusicBreathing() {
+  if (!musicMasterGain || !musicPlaying || muted) return;
+  var now = audioCtx.currentTime;
+  var elapsed = now - musicStartTime;
+  if (elapsed < 0) return;
+  var breathPeriod = MUSIC_BAR * 4; // 4-bar breathing cycle (9.6s)
+  var phase = (elapsed % breathPeriod) / breathPeriod;
+  var breath = 0.9 + 0.1 * Math.sin(phase * Math.PI * 2);
+  musicMasterGain.gain.linearRampToValueAtTime(breath, now + 0.5);
+}
+
+// --- Scheduler tick (runs every 50ms) ---
+function musicTick() {
+  if (!musicPlaying || !audioCtx || muted) return;
+  if (audioCtx.state === 'suspended') return;
+
+  var now = audioCtx.currentTime;
+  var elapsed = now - musicStartTime;
+
+  // Re-sync if we fell far behind (e.g. tab was backgrounded)
+  if (elapsed > MUSIC_LOOP_SEC * 2) {
+    musicStartTime = now - (elapsed % MUSIC_LOOP_SEC);
+    musicScheduledLoop = -1;
+  }
+
+  // Re-sync if somehow ahead of time
+  if (elapsed < -1) {
+    musicStartTime = now + 0.1;
+    musicScheduledLoop = -1;
+  }
+
+  var currentLoop = Math.floor(Math.max(0, elapsed) / MUSIC_LOOP_SEC);
+  var loopProgress = (Math.max(0, elapsed) % MUSIC_LOOP_SEC) / MUSIC_LOOP_SEC;
+
+  // Schedule current loop if not yet done
+  if (currentLoop > musicScheduledLoop) {
+    scheduleAllVoices(musicStartTime + currentLoop * MUSIC_LOOP_SEC);
+    musicScheduledLoop = currentLoop;
+  }
+
+  // Pre-schedule next loop at >75%
+  if (loopProgress > 0.75 && musicScheduledLoop <= currentLoop) {
+    scheduleAllVoices(musicStartTime + (currentLoop + 1) * MUSIC_LOOP_SEC);
+    musicScheduledLoop = currentLoop + 1;
+  }
+
+  // Update breathing LFO
+  updateMusicBreathing();
+}
+
+// --- Public API ---
 
 function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    musicMasterGain = audioCtx.createGain();
+    musicMasterGain.gain.setValueAtTime(0.9, audioCtx.currentTime);
+    musicMasterGain.connect(audioCtx.destination);
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
   if (!musicPlaying) startBackgroundMusic();
@@ -2372,59 +2549,16 @@ function initAudio() {
 function startBackgroundMusic() {
   if (!audioCtx || musicPlaying) return;
   musicPlaying = true;
-  musicNoteIdx = 0;
-  musicNextTime = audioCtx.currentTime + 0.05;
-  scheduleNextNote();
-}
-
-function scheduleNextNote() {
-  if (!musicPlaying || !audioCtx || muted) {
-    if (muted && musicPlaying && audioCtx) {
-      musicNextTime = audioCtx.currentTime + 0.5;
-      setTimeout(function() { scheduleNextNote(); }, 500);
-      return;
-    }
-    return;
-  }
-  if (audioCtx.state === 'suspended') {
-    setTimeout(function() { scheduleNextNote(); }, 200);
-    return;
-  }
-
-  var note = MELODY_PATTERN[musicNoteIdx % MELODY_PATTERN.length];
-  var freq = PENTATONIC[note.n];
-  var dur = note.d;
-  var t = Math.max(audioCtx.currentTime + 0.01, musicNextTime);
-
-  var osc = audioCtx.createOscillator();
-  var gain = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(freq, t);
-
-  var vol = 0.18;
-  gain.gain.setValueAtTime(0, t);
-  gain.gain.linearRampToValueAtTime(vol, t + 0.02);
-  gain.gain.linearRampToValueAtTime(vol * 0.7, t + dur * 0.7);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start(t);
-  osc.stop(t + dur + 0.05);
-
-  musicNextTime = t + dur * 0.85;
-  musicNoteIdx++;
-
-  var nextDelay = Math.max(50, (musicNextTime - audioCtx.currentTime) * 900);
-  if (musicPlaying) {
-    clearTimeout(musicTimer);
-    musicTimer = setTimeout(function() { scheduleNextNote(); }, nextDelay);
-  }
+  musicStartTime = audioCtx.currentTime + 0.15;
+  musicScheduledLoop = -1;
+  if (musicTickId) clearInterval(musicTickId);
+  musicTickId = setInterval(musicTick, 50);
+  musicTick(); // immediate first tick
 }
 
 function stopBackgroundMusic() {
   musicPlaying = false;
-  if (musicTimer) { clearTimeout(musicTimer); musicTimer = null; }
+  if (musicTickId) { clearInterval(musicTickId); musicTickId = null; }
 }
 
 function resumeBackgroundMusic() {
