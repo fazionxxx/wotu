@@ -1746,79 +1746,115 @@ function roundRect(x, y, w, h, r) {
 }
 
 function drawFence(x, y, size) {
-  // Draw a wooden fence border around healthy farmland tiles.
-  // Cross-hatched lines in the 4px border zone, #8B5A2B, 2px line width, 4px spacing.
+  // Draw a prominent wooden fence border around healthy farmland tiles.
+  // Extends outward to fill cell gaps and inward to slightly overlap the icon.
+  // Cross-hatched pattern: #8B5A2B, 3px lines, 3px spacing, 0.85 opacity.
   const pad = Math.max(1, Math.floor(size * 0.06));
   const inner = size - pad * 2;
   const br = Math.max(2, size * 0.12);
-  const fenceInset = 4;          // fence occupies 4px inward from tile edge
-  const fenceSpacing = 4;        // 4px between fence bars
-  const innerFence = inner - fenceInset * 2;  // inner clear area (grass shows through)
+  const fenceSpacing = 3;           // tight 3px bar spacing
+
+  // Fence band: extends from near cell boundary (fills tile gap) inward past pad
+  const outerOff = 2;               // close to cell boundary — fills the inter-tile gap
+  const innerOff = pad + 10;        // reaches ~10px into the tile, slightly overlapping icon
 
   ctx.save();
 
-  // Clip to the tile's rounded rect shape
+  // Clip to rounded rect that covers the full fence band (outer edge to inner edge)
   ctx.beginPath();
-  roundRect(x + pad, y + pad, inner, inner, br);
+  roundRect(x + outerOff, y + outerOff, size - outerOff * 2, size - outerOff * 2, br + 2);
   ctx.clip();
 
-  ctx.globalAlpha = 0.7;
+  ctx.globalAlpha = 0.85;
   ctx.strokeStyle = '#8B5A2B';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 3;
   ctx.lineCap = 'round';
 
-  const x0 = x + pad + fenceInset;
-  const y0 = y + pad + fenceInset;
-  const x1 = x + pad + inner - fenceInset;
-  const y1 = y + pad + inner - fenceInset;
+  // Four fence edges: top, bottom, left, right
+  // Each edge: fence bars running perpendicular to the edge, spanning outerOff→innerOff
+  const xOut = x + outerOff;
+  const yOut = y + outerOff;
+  const xIn = x + innerOff;
+  const yIn = y + innerOff;
+  const xOutR = x + size - outerOff;
+  const yOutB = y + size - outerOff;
+  const xInR = x + size - innerOff;
+  const yInB = y + size - innerOff;
 
-  // Diagonal lines in one direction (\\)
-  for (let offset = -inner; offset < inner * 2; offset += fenceSpacing) {
+  // ── Top edge: vertical pickets from yOut to yIn ──
+  for (let dx = xIn; dx <= xInR; dx += fenceSpacing) {
     ctx.beginPath();
-    // Top edge zone
-    ctx.moveTo(x0 + offset, y0);
-    ctx.lineTo(x0 + offset + fenceInset, y0 - fenceInset);
-    // Bottom edge zone
-    ctx.moveTo(x0 + offset, y1);
-    ctx.lineTo(x0 + offset + fenceInset, y1 + fenceInset);
+    ctx.moveTo(dx, yOut);
+    ctx.lineTo(dx, yIn);
     ctx.stroke();
   }
+  // Top rail (horizontal bar connecting pickets)
+  ctx.beginPath();
+  ctx.moveTo(xOut, yIn - 2);
+  ctx.lineTo(xOutR, yIn - 2);
+  ctx.stroke();
 
-  // Diagonal lines in the other direction (////)
-  for (let offset = -inner; offset < inner * 2; offset += fenceSpacing) {
+  // ── Bottom edge: vertical pickets from yInB to yOutB ──
+  for (let dx = xIn; dx <= xInR; dx += fenceSpacing) {
     ctx.beginPath();
-    // Top edge zone
-    ctx.moveTo(x0 + offset, y0);
-    ctx.lineTo(x0 + offset - fenceInset, y0 - fenceInset);
-    // Bottom edge zone
-    ctx.moveTo(x0 + offset, y1);
-    ctx.lineTo(x0 + offset - fenceInset, y1 + fenceInset);
+    ctx.moveTo(dx, yInB);
+    ctx.lineTo(dx, yOutB);
     ctx.stroke();
   }
+  // Bottom rail
+  ctx.beginPath();
+  ctx.moveTo(xOut, yInB + 2);
+  ctx.lineTo(xOutR, yInB + 2);
+  ctx.stroke();
 
-  // Vertical bars (left and right edges)
-  for (let dy = y0; dy <= y1; dy += fenceSpacing) {
+  // ── Left edge: horizontal pickets from xOut to xIn ──
+  for (let dy = yIn; dy <= yInB; dy += fenceSpacing) {
     ctx.beginPath();
-    // Left edge
-    ctx.moveTo(x0, dy);
-    ctx.lineTo(x0, dy + fenceSpacing * 0.6);
-    // Right edge
-    ctx.moveTo(x1, dy);
-    ctx.lineTo(x1, dy + fenceSpacing * 0.6);
+    ctx.moveTo(xOut, dy);
+    ctx.lineTo(xIn, dy);
     ctx.stroke();
   }
+  // Left rail (vertical bar connecting pickets)
+  ctx.beginPath();
+  ctx.moveTo(xIn - 2, yOut);
+  ctx.lineTo(xIn - 2, yOutB);
+  ctx.stroke();
 
-  // Horizontal bars (top and bottom edges)
-  for (let dx = x0; dx <= x1; dx += fenceSpacing) {
+  // ── Right edge: horizontal pickets from xInR to xOutR ──
+  for (let dy = yIn; dy <= yInB; dy += fenceSpacing) {
     ctx.beginPath();
-    // Top edge
-    ctx.moveTo(dx, y0);
-    ctx.lineTo(dx + fenceSpacing * 0.6, y0);
-    // Bottom edge
-    ctx.moveTo(dx, y1);
-    ctx.lineTo(dx + fenceSpacing * 0.6, y1);
+    ctx.moveTo(xInR, dy);
+    ctx.lineTo(xOutR, dy);
     ctx.stroke();
   }
+  // Right rail
+  ctx.beginPath();
+  ctx.moveTo(xInR + 2, yOut);
+  ctx.lineTo(xInR + 2, yOutB);
+  ctx.stroke();
+
+  // ── Corner cross-braces (diagonal) at each of the 4 corners ──
+  const braceLen = innerOff - outerOff + 2;
+  // Top-left
+  ctx.beginPath();
+  ctx.moveTo(xOut + 1, yIn);
+  ctx.lineTo(xIn, yOut + 1);
+  ctx.stroke();
+  // Top-right
+  ctx.beginPath();
+  ctx.moveTo(xInR, yOut + 1);
+  ctx.lineTo(xOutR - 1, yIn);
+  ctx.stroke();
+  // Bottom-left
+  ctx.beginPath();
+  ctx.moveTo(xOut + 1, yInB);
+  ctx.lineTo(xIn, yOutB - 1);
+  ctx.stroke();
+  // Bottom-right
+  ctx.beginPath();
+  ctx.moveTo(xInR, yOutB - 1);
+  ctx.lineTo(xOutR - 1, yInB);
+  ctx.stroke();
 
   ctx.restore();
 }
