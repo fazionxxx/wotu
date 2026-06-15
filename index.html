@@ -2474,7 +2474,8 @@ var MELODY = [
 // --- Single music note ---
 function playMusicNote(freq, startTime, endTime, type, vol, filterFreq) {
   if (!audioCtx || muted) return;
-  if (startTime < audioCtx.currentTime - 0.05) return; // already passed
+  // Only skip notes that are VERY stale (>2s in past) — let Web Audio handle slightly late starts
+  if (startTime < audioCtx.currentTime - 2.0) return;
 
   var osc = audioCtx.createOscillator();
   var gain = audioCtx.createGain();
@@ -2569,31 +2570,19 @@ function musicTick() {
   var now = audioCtx.currentTime;
   var elapsed = now - musicStartTime;
 
-  // Re-sync if we fell far behind (e.g. tab was backgrounded)
-  if (elapsed > MUSIC_LOOP_SEC * 2) {
-    musicStartTime = now - (elapsed % MUSIC_LOOP_SEC);
+  // Re-sync if we fell far behind (e.g. tab was backgrounded for minutes)
+  if (elapsed > MUSIC_LOOP_SEC * 3) {
+    var phase = elapsed % MUSIC_LOOP_SEC;
+    musicStartTime = now - phase;
     musicScheduledLoop = -1;
   }
 
-  // Re-sync if somehow ahead of time
-  if (elapsed < -1) {
-    musicStartTime = now + 0.1;
-    musicScheduledLoop = -1;
-  }
-
-  var currentLoop = Math.floor(Math.max(0, elapsed) / MUSIC_LOOP_SEC);
-  var loopProgress = (Math.max(0, elapsed) % MUSIC_LOOP_SEC) / MUSIC_LOOP_SEC;
-
-  // Schedule current loop if not yet done
-  if (currentLoop > musicScheduledLoop) {
-    scheduleAllVoices(musicStartTime + currentLoop * MUSIC_LOOP_SEC);
-    musicScheduledLoop = currentLoop;
-  }
-
-  // Pre-schedule next loop at >75%
-  if (loopProgress > 0.75 && musicScheduledLoop <= currentLoop) {
-    scheduleAllVoices(musicStartTime + (currentLoop + 1) * MUSIC_LOOP_SEC);
-    musicScheduledLoop = currentLoop + 1;
+  // Double-buffer: always ensure current + next loop are scheduled.
+  // The while-loop catches up if ticks were delayed or pre-scheduling was missed.
+  var currentLoop = Math.floor(Math.max(0, now - musicStartTime) / MUSIC_LOOP_SEC);
+  while (musicScheduledLoop < currentLoop + 1) {
+    musicScheduledLoop++;
+    scheduleAllVoices(musicStartTime + musicScheduledLoop * MUSIC_LOOP_SEC);
   }
 
   // Update breathing LFO
