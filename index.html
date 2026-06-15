@@ -1173,8 +1173,14 @@ function drawWoodHeader(ctx, x, y, w, h, seed) {
   speckleNoise(ctx, x, y, w, h, Math.floor(w * h * 0.04), 'rgba(20,10,3,A)', [0.04, 0.18], seed + 940);
   ctx.restore();
 
-  wobblyRoundRect(ctx, x, y, w, h, 6, 0.022, seed);
-  handStroke(ctx, 'rgba(30,12,3,0.70)', 2.0, 2, 1.2, seed + 950);
+  // Clean solid border (replaces multi-pass handStroke to fix blur)
+  ctx.beginPath();
+  roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 6);
+  ctx.strokeStyle = '#8B6914';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -1188,10 +1194,13 @@ function drawStatCard(ctx, x, y, w, h, icon, label, value, color, seed) {
   ctx.fillStyle = cardGrad;
   ctx.fill();
 
-  wobblyRoundRect(ctx, x, y, w, h, 5, 0.024, seed);
-  ctx.strokeStyle = 'rgba(60,30,10,0.55)';
+  // Clean solid border (replaces wobbly stroke to fix blur)
+  ctx.beginPath();
+  roundRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, 5);
+  ctx.strokeStyle = '#8B6914';
   ctx.lineWidth = 1.5;
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   ctx.stroke();
 
   // Subtle inner speckle for parchment texture
@@ -1211,10 +1220,13 @@ function drawGrainProgressBar(ctx, x, y, w, h, fillRatio, seed) {
   ctx.fillStyle = grooveGrad;
   ctx.fill();
 
-  wobblyRoundRect(ctx, x + 1.5, y + 1, w - 3, h * 0.5, h * 0.4, 0.028, seed + 10);
+  // Clean inner line (replaces wobbly stroke to fix blur)
+  ctx.beginPath();
+  roundRect(ctx, x + 1.5, y + 1, w - 3, h * 0.5, h * 0.4);
   ctx.strokeStyle = 'rgba(15,5,2,0.35)';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1;
   ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
   ctx.stroke();
 
   if (fillRatio > 0.01) {
@@ -2169,10 +2181,19 @@ function drawBoard(board, highlightCells = null) {
 // --- Particle System ---
 let particles = [];
 let floatTexts = [];
+let flashEffects = []; // white flash for 4+ block matches
 let animFrameId = null;
 
+const MAX_PARTICLES = 30;
+
 function spawnParticles(cx, cy, count, color, spread, life) {
-  for (let i = 0; i < count; i++) {
+  // Cap total active particles to prevent performance issues during chain reactions
+  var allowed = count;
+  if (particles.length >= MAX_PARTICLES) return;
+  if (particles.length + count > MAX_PARTICLES) {
+    allowed = MAX_PARTICLES - particles.length;
+  }
+  for (let i = 0; i < allowed; i++) {
     const angle = Math.random() * Math.PI * 2;
     const speed = Math.random() * spread;
     particles.push({
@@ -2262,6 +2283,7 @@ let renderHighlights = null;
 function hasActiveAnimations() {
   return particles.length > 0 ||
     floatTexts.length > 0 ||
+    flashEffects.length > 0 ||
     game.state === 'animating' ||
     animState.swap !== null ||
     animState.elim !== null ||
@@ -2280,6 +2302,7 @@ function startRenderLoop() {
 
     updateParticles(dt);
     updateFloatTexts(dt);
+    updateFlashes();
 
     // Clean stale bounces & shakes
     const now = performance.now();
@@ -2299,6 +2322,7 @@ function startRenderLoop() {
       drawBoard(renderBoard, renderHighlights);
       drawParticles();
       drawFloatTexts(ctx);
+      drawFlashes(ctx);
     }
 
     if (hasActiveAnimations()) {
@@ -2309,6 +2333,7 @@ function startRenderLoop() {
       if (renderBoard) {
         drawBoard(renderBoard, renderHighlights);
         drawFloatTexts(ctx);
+        drawFlashes(ctx);
       }
     }
   }
@@ -2323,6 +2348,47 @@ function stopRenderLoop() {
   }
 }
 
+// --- Flash Effects (4+ block elimination) ---
+
+function spawnFlash(x, y, maxRadius) {
+  flashEffects.push({ x, y, startTime: performance.now(), duration: 500, maxRadius: maxRadius });
+  // Cap at 24 active flashes
+  if (flashEffects.length > 24) flashEffects.shift();
+}
+
+function updateFlashes() {
+  var now = performance.now();
+  for (var i = flashEffects.length - 1; i >= 0; i--) {
+    if (now - flashEffects[i].startTime > flashEffects[i].duration) {
+      flashEffects.splice(i, 1);
+    }
+  }
+}
+
+function drawFlashes(ctx) {
+  var now = performance.now();
+  for (var i = 0; i < flashEffects.length; i++) {
+    var f = flashEffects[i];
+    var progress = (now - f.startTime) / f.duration;
+    if (progress > 1) continue;
+    // Expand and fade: radius grows 20%->100%, alpha decreases 0.7->0
+    var radius = f.maxRadius * (0.2 + progress * 0.8);
+    var alpha = (1 - progress) * 0.7;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    var glow = ctx.createRadialGradient(f.x, f.y, radius * 0.05, f.x, f.y, radius);
+    glow.addColorStop(0, 'rgba(255,255,255,1)');
+    glow.addColorStop(0.35, 'rgba(255,255,255,0.7)');
+    glow.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 function triggerRender(board, highlights = null) {
   renderBoard = board;
   renderHighlights = highlights;
@@ -2330,6 +2396,7 @@ function triggerRender(board, highlights = null) {
   drawBoard(board, highlights);
   drawParticles();
   drawFloatTexts(ctx);
+  drawFlashes(ctx);
   // Continue loop if animations active
   if (!animFrameId && (particles.length > 0 || game.state === 'animating')) {
     startRenderLoop();
@@ -2682,6 +2749,15 @@ function sfxMatch() {
   playTone(180, 0.08, 'triangle', 0.04, 0.01, 0.05);
 }
 
+function sfxBigMatch() {
+  // Big elimination (4+ blocks) — brighter chord + sparkle
+  playChord([523, 659, 784], 0.25, 'sine', 0.06);
+  setTimeout(function() { playTone(1047, 0.1, 'sine', 0.06, 0.002, 0.02); }, 60);
+  setTimeout(function() { playTone(1200, 0.08, 'sine', 0.04, 0.002, 0.01); }, 100);
+  setTimeout(function() { playTone(1400, 0.05, 'sine', 0.03, 0.001, 0.01); }, 130);
+  playNoise(0.18, 0.04, 400);
+}
+
 function sfxLooseSoilMatch() {
   playSlide(350, 520, 0.18, 'sine', 0.08);
   setTimeout(function() { playTone(600, 0.06, 'sine', 0.04, 0.003, 0.02); }, 100);
@@ -2985,10 +3061,23 @@ const game = {
     animState.elim = { cells: allCells, startTime: performance.now(), duration: 380 };
     startRenderLoop();
 
-    // Spawn particles during elimination
+    // Spawn particles during elimination — enhanced effects for 4+ matches
     for (const match of matchGroups) {
       const blockColor = BLOCK_COLORS[match.type] ? BLOCK_COLORS[match.type].fill : '#8D6E63';
       spawnElimParticles(match.cells, blockColor);
+
+      // 4+ block match: white flash + burst particles + special SFX
+      if (match.cells.length >= 4) {
+        sfxBigMatch();
+        for (const cell of match.cells) {
+          const cx = boardMargin + cell.c * cellSize + cellSize / 2;
+          const cy = boardMargin + cell.r * cellSize + cellSize / 2;
+          // White flash ring expanding from each cell
+          spawnFlash(cx, cy, cellSize * 1.1);
+          // Extra burst particles in block color (8-12 per cell)
+          spawnParticles(cx, cy, 10, blockColor, cellSize * 0.18, 600);
+        }
+      }
     }
 
     await new Promise(resolve => setTimeout(resolve, 380));
