@@ -1748,11 +1748,11 @@ function roundRect(x, y, w, h, r) {
 function drawFence(x, y, size) {
   // Draw a prominent wooden fence border around healthy farmland tiles.
   // Extends outward to fill cell gaps and inward to slightly overlap the icon.
-  // Cross-hatched pattern: #8B5A2B, 3px lines, 3px spacing, 0.85 opacity.
+  // Fence pattern: #8B5A2B, 3px lines, 6px spacing (1:1 bar-to-gap ratio), 0.85 opacity.
   const pad = Math.max(1, Math.floor(size * 0.06));
   const inner = size - pad * 2;
   const br = Math.max(2, size * 0.12);
-  const fenceSpacing = 3;           // tight 3px bar spacing
+  const fenceSpacing = 6;           // 6px spacing → 3px bar + 3px gap = 1:1
 
   // Fence band: extends from near cell boundary (fills tile gap) inward past pad
   const outerOff = 2;               // close to cell boundary — fills the inter-tile gap
