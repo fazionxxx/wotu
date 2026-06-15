@@ -1745,6 +1745,84 @@ function roundRect(x, y, w, h, r) {
   ctx.closePath();
 }
 
+function drawFence(x, y, size) {
+  // Draw a wooden fence border around healthy farmland tiles.
+  // Cross-hatched lines in the 4px border zone, #8B5A2B, 2px line width, 4px spacing.
+  const pad = Math.max(1, Math.floor(size * 0.06));
+  const inner = size - pad * 2;
+  const br = Math.max(2, size * 0.12);
+  const fenceInset = 4;          // fence occupies 4px inward from tile edge
+  const fenceSpacing = 4;        // 4px between fence bars
+  const innerFence = inner - fenceInset * 2;  // inner clear area (grass shows through)
+
+  ctx.save();
+
+  // Clip to the tile's rounded rect shape
+  ctx.beginPath();
+  roundRect(x + pad, y + pad, inner, inner, br);
+  ctx.clip();
+
+  ctx.globalAlpha = 0.7;
+  ctx.strokeStyle = '#8B5A2B';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+
+  const x0 = x + pad + fenceInset;
+  const y0 = y + pad + fenceInset;
+  const x1 = x + pad + inner - fenceInset;
+  const y1 = y + pad + inner - fenceInset;
+
+  // Diagonal lines in one direction (\\)
+  for (let offset = -inner; offset < inner * 2; offset += fenceSpacing) {
+    ctx.beginPath();
+    // Top edge zone
+    ctx.moveTo(x0 + offset, y0);
+    ctx.lineTo(x0 + offset + fenceInset, y0 - fenceInset);
+    // Bottom edge zone
+    ctx.moveTo(x0 + offset, y1);
+    ctx.lineTo(x0 + offset + fenceInset, y1 + fenceInset);
+    ctx.stroke();
+  }
+
+  // Diagonal lines in the other direction (////)
+  for (let offset = -inner; offset < inner * 2; offset += fenceSpacing) {
+    ctx.beginPath();
+    // Top edge zone
+    ctx.moveTo(x0 + offset, y0);
+    ctx.lineTo(x0 + offset - fenceInset, y0 - fenceInset);
+    // Bottom edge zone
+    ctx.moveTo(x0 + offset, y1);
+    ctx.lineTo(x0 + offset - fenceInset, y1 + fenceInset);
+    ctx.stroke();
+  }
+
+  // Vertical bars (left and right edges)
+  for (let dy = y0; dy <= y1; dy += fenceSpacing) {
+    ctx.beginPath();
+    // Left edge
+    ctx.moveTo(x0, dy);
+    ctx.lineTo(x0, dy + fenceSpacing * 0.6);
+    // Right edge
+    ctx.moveTo(x1, dy);
+    ctx.lineTo(x1, dy + fenceSpacing * 0.6);
+    ctx.stroke();
+  }
+
+  // Horizontal bars (top and bottom edges)
+  for (let dx = x0; dx <= x1; dx += fenceSpacing) {
+    ctx.beginPath();
+    // Top edge
+    ctx.moveTo(dx, y0);
+    ctx.lineTo(dx + fenceSpacing * 0.6, y0);
+    // Bottom edge
+    ctx.moveTo(dx, y1);
+    ctx.lineTo(dx + fenceSpacing * 0.6, y1);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 function drawBlock(x, y, size, type, r, c, scaleOverride) {
   if (!BLOCK_COLORS[type]) return;
   const pad = Math.max(1, Math.floor(size * 0.06));
@@ -1809,6 +1887,11 @@ function drawBlock(x, y, size, type, r, c, scaleOverride) {
   ctx.shadowBlur = 0;
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 0;
+
+  // Draw fence border for healthy farmland blocks
+  if (type === BLOCK.HEALTHY_FARM) {
+    drawFence(x, y, size);
+  }
 
   ctx.restore();
 }
