@@ -1746,21 +1746,22 @@ function roundRect(x, y, w, h, r) {
 }
 
 function drawFence(x, y, size) {
-  // Draw a prominent wooden fence border around healthy farmland tiles.
-  // Extends outward to fill cell gaps and inward to slightly overlap the icon.
-  // Fence pattern: #8B5A2B, 3px lines, 6px spacing (1:1 bar-to-gap ratio), 0.85 opacity.
+  // Wooden fence border around healthy farmland tiles.
+  // Focuses on filling the inter-tile gap, barely intruding into the icon.
+  // #8B5A2B, 3px lines, 10px spacing (sparse), 0.85 opacity.
   const pad = Math.max(1, Math.floor(size * 0.06));
   const inner = size - pad * 2;
   const br = Math.max(2, size * 0.12);
-  const fenceSpacing = 6;           // 6px spacing → 3px bar + 3px gap = 1:1
+  const fenceSpacing = 10;          // sparse: 10px between bars
 
-  // Fence band: extends from near cell boundary (fills tile gap) inward past pad
-  const outerOff = 2;               // close to cell boundary — fills the inter-tile gap
-  const innerOff = pad + 10;        // reaches ~10px into the tile, slightly overlapping icon
+  // outerOff=0: fence reaches cell boundary, fully filling the pad gap between tiles
+  // innerOff=pad+3: fence stops just 3px inside the tile, barely overlapping the icon
+  const outerOff = 0;
+  const innerOff = pad + 3;
 
   ctx.save();
 
-  // Clip to rounded rect that covers the full fence band (outer edge to inner edge)
+  // Clip to cover from cell boundary (gap-filling) to inner fence edge
   ctx.beginPath();
   roundRect(x + outerOff, y + outerOff, size - outerOff * 2, size - outerOff * 2, br + 2);
   ctx.clip();
@@ -1770,8 +1771,6 @@ function drawFence(x, y, size) {
   ctx.lineWidth = 3;
   ctx.lineCap = 'round';
 
-  // Four fence edges: top, bottom, left, right
-  // Each edge: fence bars running perpendicular to the edge, spanning outerOff→innerOff
   const xOut = x + outerOff;
   const yOut = y + outerOff;
   const xIn = x + innerOff;
@@ -1781,79 +1780,76 @@ function drawFence(x, y, size) {
   const xInR = x + size - innerOff;
   const yInB = y + size - innerOff;
 
-  // ── Top edge: vertical pickets from yOut to yIn ──
+  // ── Top edge: short vertical pickets spanning the gap+pad zone ──
   for (let dx = xIn; dx <= xInR; dx += fenceSpacing) {
     ctx.beginPath();
     ctx.moveTo(dx, yOut);
     ctx.lineTo(dx, yIn);
     ctx.stroke();
   }
-  // Top rail (horizontal bar connecting pickets)
+  // Top rail
   ctx.beginPath();
-  ctx.moveTo(xOut, yIn - 2);
-  ctx.lineTo(xOutR, yIn - 2);
+  ctx.moveTo(xOut, yIn - 1.5);
+  ctx.lineTo(xOutR, yIn - 1.5);
   ctx.stroke();
 
-  // ── Bottom edge: vertical pickets from yInB to yOutB ──
+  // ── Bottom edge ──
   for (let dx = xIn; dx <= xInR; dx += fenceSpacing) {
     ctx.beginPath();
     ctx.moveTo(dx, yInB);
     ctx.lineTo(dx, yOutB);
     ctx.stroke();
   }
-  // Bottom rail
   ctx.beginPath();
-  ctx.moveTo(xOut, yInB + 2);
-  ctx.lineTo(xOutR, yInB + 2);
+  ctx.moveTo(xOut, yInB + 1.5);
+  ctx.lineTo(xOutR, yInB + 1.5);
   ctx.stroke();
 
-  // ── Left edge: horizontal pickets from xOut to xIn ──
+  // ── Left edge: short horizontal pickets ──
   for (let dy = yIn; dy <= yInB; dy += fenceSpacing) {
     ctx.beginPath();
     ctx.moveTo(xOut, dy);
     ctx.lineTo(xIn, dy);
     ctx.stroke();
   }
-  // Left rail (vertical bar connecting pickets)
   ctx.beginPath();
-  ctx.moveTo(xIn - 2, yOut);
-  ctx.lineTo(xIn - 2, yOutB);
+  ctx.moveTo(xIn - 1.5, yOut);
+  ctx.lineTo(xIn - 1.5, yOutB);
   ctx.stroke();
 
-  // ── Right edge: horizontal pickets from xInR to xOutR ──
+  // ── Right edge ──
   for (let dy = yIn; dy <= yInB; dy += fenceSpacing) {
     ctx.beginPath();
     ctx.moveTo(xInR, dy);
     ctx.lineTo(xOutR, dy);
     ctx.stroke();
   }
-  // Right rail
   ctx.beginPath();
-  ctx.moveTo(xInR + 2, yOut);
-  ctx.lineTo(xInR + 2, yOutB);
+  ctx.moveTo(xInR + 1.5, yOut);
+  ctx.lineTo(xInR + 1.5, yOutB);
   ctx.stroke();
 
-  // ── Corner cross-braces (diagonal) at each of the 4 corners ──
-  const braceLen = innerOff - outerOff + 2;
-  // Top-left
+  // ── Steep corner cross-braces (long diagonals across each corner zone) ──
+  const diagSpan = innerOff - outerOff;
+  // Top-left: steep diagonal from outer-corner to inner point
   ctx.beginPath();
-  ctx.moveTo(xOut + 1, yIn);
-  ctx.lineTo(xIn, yOut + 1);
+  ctx.moveTo(xOut, yOut);
+  ctx.lineTo(xIn + diagSpan, yIn + diagSpan);
   ctx.stroke();
   // Top-right
   ctx.beginPath();
-  ctx.moveTo(xInR, yOut + 1);
-  ctx.lineTo(xOutR - 1, yIn);
+  ctx.moveTo(xOutR, yOut);
+  ctx.lineTo(xInR - diagSpan, yIn + diagSpan);
   ctx.stroke();
   // Bottom-left
   ctx.beginPath();
-  ctx.moveTo(xOut + 1, yInB);
-  ctx.lineTo(xIn, yOutB - 1);
+  ctx.moveTo(xOut, yOutB);
+  ctx.lineTo(xIn + diagSpan, yInB - diagSpan);
   ctx.stroke();
   // Bottom-right
   ctx.beginPath();
-  ctx.moveTo(xInR, yOutB - 1);
-  ctx.lineTo(xOutR - 1, yInB);
+  ctx.moveTo(xOutR, yOutB);
+  ctx.lineTo(xInR - diagSpan, yInB - diagSpan);
   ctx.stroke();
 
   ctx.restore();
