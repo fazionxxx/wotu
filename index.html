@@ -612,6 +612,8 @@ function easeOutBounce(t) {
 const animState = {
   // Bounce cells: { key -> {startTime, intensity} }
   bounces: {},
+  // Shake cells: { key -> {startTime} } — HEALTHY_FARM swap rejection feedback
+  shakes: {},
   // Swap animation
   swap: null, // {r1,c1,r2,c2,startTime,duration:300}
   // Elimination animation
@@ -635,6 +637,21 @@ function addBounce(r, c, intensity = 1.0) {
 
 function clearBounces() {
   animState.bounces = {};
+}
+
+function shakeTile(r, c) {
+  // Visual shake: brief horizontal oscillation (3px, 3 cycles, 50ms each)
+  animState.shakes[animCellKey(r, c)] = { startTime: performance.now() };
+  startRenderLoop();
+}
+
+function vibrate() {
+  // Haptic feedback for mobile devices (ignored on desktop)
+  try {
+    if (window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate(50);
+    }
+  } catch (e) { /* ignore */ }
 }
 
 // ============================================================
@@ -1876,7 +1893,31 @@ function drawBlock(x, y, size, type, r, c, scaleOverride) {
     }
   }
 
+  // Compute shake offset (HEALTHY_FARM rejection feedback — horizontal oscillation)
+  let shakeOffsetX = 0;
+  const shake = animState.shakes[key];
+  if (shake) {
+    const elapsed = performance.now() - shake.startTime;
+    const totalDuration = 150; // 3 cycles × 50ms
+    if (elapsed > totalDuration) {
+      delete animState.shakes[key];
+    } else {
+      const cycles = 3;
+      const cycleTime = totalDuration / cycles; // 50ms
+      const phase = (elapsed % cycleTime) / cycleTime; // 0..1 within current cycle
+      const amplitude = 3; // 3px shake
+      // Triangle wave: moves linearly left-right-left within each cycle
+      shakeOffsetX = amplitude * (1 - Math.abs(phase * 4 - 2));
+      if (phase < 0.5) shakeOffsetX = -shakeOffsetX; // alternate direction
+    }
+  }
+
   ctx.save();
+
+  // Apply shake horizontal offset
+  if (shakeOffsetX !== 0) {
+    ctx.translate(shakeOffsetX, 0);
+  }
 
   // Apply bounce scale
   if (bounceScale !== 1) {
@@ -2179,7 +2220,8 @@ function hasActiveAnimations() {
     animState.swap !== null ||
     animState.elim !== null ||
     animState.drops !== null ||
-    Object.keys(animState.bounces).length > 0;
+    Object.keys(animState.bounces).length > 0 ||
+    Object.keys(animState.shakes).length > 0;
 }
 
 function startRenderLoop() {
@@ -2193,10 +2235,13 @@ function startRenderLoop() {
     updateParticles(dt);
     updateFloatTexts(dt);
 
-    // Clean stale bounces
+    // Clean stale bounces & shakes
     const now = performance.now();
     for (const [key, b] of Object.entries(animState.bounces)) {
       if (now - b.startTime > 400) delete animState.bounces[key];
+    }
+    for (const [key, s] of Object.entries(animState.shakes)) {
+      if (now - s.startTime > 200) delete animState.shakes[key];
     }
 
     // Auto-clear stale animation states
@@ -2671,7 +2716,12 @@ const game = {
 
     // Reject swaps involving healthy farmland (immovable obstacle)
     if (this.board[r1][c1] === BLOCK.HEALTHY_FARM || this.board[r2][c2] === BLOCK.HEALTHY_FARM) {
-      // Silent rejection - not counted as a move (no step/penalty deduction)
+      // Shake the healthy farmland tile + vibrate + sfx
+      const hr = this.board[r1][c1] === BLOCK.HEALTHY_FARM ? r1 : r2;
+      const hc = this.board[r1][c1] === BLOCK.HEALTHY_FARM ? c1 : c2;
+      shakeTile(hr, hc);
+      vibrate();
+      sfxInvalid();
       return;
     }
 
