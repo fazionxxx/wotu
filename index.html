@@ -2342,7 +2342,6 @@ function triggerRender(board, highlights = null) {
 // ============================================================
 let audioCtx = null;
 let muted = false;
-let musicGain = null;
 let musicPlaying = false;
 let musicNoteIdx = 0;
 let musicNextTime = 0;
@@ -2365,9 +2364,6 @@ const MELODY_PATTERN = [
 function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    musicGain = audioCtx.createGain();
-    musicGain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-    musicGain.connect(audioCtx.destination);
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
   if (!musicPlaying) startBackgroundMusic();
@@ -2412,7 +2408,7 @@ function scheduleNextNote() {
   gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
 
   osc.connect(gain);
-  gain.connect(musicGain);
+  gain.connect(audioCtx.destination);
   osc.start(t);
   osc.stop(t + dur + 0.05);
 
