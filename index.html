@@ -453,7 +453,7 @@ const BLOCK = {
   DESERT:        'desert',         // 沙化块
   SALINE:        'saline',         // 盐碱晶
   LOOSE_SOIL:    'loose_soil',     // 疏松土块
-  HEALTHY_FARM:  'healthy_farm'    // 基本农田
+  HEALTHY_FARM:  'healthy_farm'    // 永久基本农田
 };
 
 const POLLUTANTS = [BLOCK.COMPACTION, BLOCK.HEAVY_METAL, BLOCK.ORGANIC, BLOCK.DESERT, BLOCK.SALINE];
@@ -476,7 +476,7 @@ const BLOCK_NAMES = {
   [BLOCK.DESERT]:       '沙化块',
   [BLOCK.SALINE]:       '盐碱晶',
   [BLOCK.LOOSE_SOIL]:   '疏松土块',
-  [BLOCK.HEALTHY_FARM]: '基本农田'
+  [BLOCK.HEALTHY_FARM]: '永久基本农田'
 };
 
 const BLOCK_DESC = {
@@ -486,7 +486,7 @@ const BLOCK_DESC = {
   [BLOCK.DESERT]:       '土地沙化蔓延，需固沙保水',
   [BLOCK.SALINE]:       '盐碱结晶侵蚀，需淋盐洗碱',
   [BLOCK.LOOSE_SOIL]:   '土壤已疏松，再修复一次即可复耕',
-  [BLOCK.HEALTHY_FARM]: '✨ 基本农田！粮食安全有保障'
+  [BLOCK.HEALTHY_FARM]: '✨ 永久基本农田！粮食安全有保障'
 };
 
 const BLOCK_ICONS = {
@@ -513,7 +513,7 @@ const LEVELS = [
 ⏱ 修复时间 <strong style="color:#66BB6A;">10分钟</strong>，时间充裕。
 <br>⚠️ 无效移动扣除 <strong>5%</strong> 时间 · 🌱 成功复耕奖励 <strong>+3秒</strong>
 <br>
-🎯 目标：复耕 <strong style="color:#66BB6A;">6</strong> 块基本农田 &nbsp;|&nbsp; 👣 步数：<strong>33</strong> 步
+🎯 目标：复耕 <strong style="color:#66BB6A;">6</strong> 块永久基本农田 &nbsp;|&nbsp; 👣 步数：<strong>33</strong> 步
 <br><br>
 <em>让我们从「复苏之风」开始，唤醒沉睡的土地！</em>`,
       btn: '🌱 开始守护'
@@ -535,7 +535,7 @@ const LEVELS = [
 ⏱ 修复时间仅 <strong style="color:#FFA726;">80秒</strong>，分秒必争！
 <br>⚠️ 无效移动扣除 <strong>5%</strong> 时间 · 🌱 成功复耕奖励 <strong>+3秒</strong>
 <br>
-🎯 目标：复耕 <strong style="color:#66BB6A;">9</strong> 块基本农田 &nbsp;|&nbsp; 👣 步数：<strong>23</strong> 步
+🎯 目标：复耕 <strong style="color:#66BB6A;">9</strong> 块永久基本农田 &nbsp;|&nbsp; 👣 步数：<strong>23</strong> 步
 <br><br>
 <em>准备好了吗？开始「大地疗愈」的征程！</em>`,
       btn: '💪 接受挑战'
@@ -558,7 +558,7 @@ const LEVELS = [
 ⏱ 修复时间仅 <strong style="color:#EF5350;">120秒</strong>，步数充足但时间紧迫！
 <br>⚠️ 无效移动扣除 <strong>5%</strong> 时间 · 🌱 成功复耕奖励 <strong>+3秒</strong>
 <br>
-🎯 目标：复耕 <strong style="color:#66BB6A;">13</strong> 块基本农田 &nbsp;|&nbsp; 👣 步数：<strong>50</strong> 步
+🎯 目标：复耕 <strong style="color:#66BB6A;">13</strong> 块永久基本农田 &nbsp;|&nbsp; 👣 步数：<strong>50</strong> 步
 <br><br>
 <em>这是最后的挑战——守护每一寸良田！</em>`,
       btn: '⚔️ 迎接挑战'
@@ -3407,7 +3407,7 @@ function showPopup(type, message) {
   if (type === 'win') {
     icon.textContent = '🌾';
     title.textContent = '复耕成功！';
-    msg.textContent = '你成功修复了 ' + game.reclaimedCount + ' 块基本农田！';
+    msg.textContent = '你成功修复了 ' + game.reclaimedCount + ' 块永久基本农田！';
     // Show random quote
     const quote = randChoice(QUOTES);
     quoteDiv.style.display = 'block';
@@ -3471,7 +3471,7 @@ function showRulesPopup() {
       <p>3个相同的<strong>污染物</strong>横/竖相邻 → 消除！<br>
       中间格子变为<strong>疏松土块</strong>，两边变为空格。<br>
       3个<strong>疏松土块</strong>相邻 → 消除！<br>
-      中间格子变为<strong>🌱 基本农田</strong>，复耕计数+1。</p>
+      中间格子变为<strong>🌱 永久基本农田</strong>，复耕计数+1。</p>
     </div>
     <div class="rule-section">
       <h4>🪨 方块类型</h4>
@@ -3482,7 +3482,7 @@ function showRulesPopup() {
         <span class="rule-block-tag">🏜️ 沙化块</span>
         <span class="rule-block-tag">💎 盐碱晶</span>
         <span class="rule-block-tag">🟫 疏松土块</span>
-        <span class="rule-block-tag">🌱 基本农田</span>
+        <span class="rule-block-tag">🌱 永久基本农田</span>
       </div>
     </div>
     <div class="rule-section">
@@ -3491,7 +3491,7 @@ function showRulesPopup() {
     </div>
     <div class="rule-section">
       <h4>🏆 胜负条件</h4>
-      <p>✅ 复耕基本农田 ≥ 关卡目标 → 胜利<br>
+      <p>✅ 复耕永久基本农田 ≥ 关卡目标 → 胜利<br>
       ❌ 步数用完 或 粮食归零 → 失败</p>
     </div>
   </div>`;
@@ -3666,9 +3666,9 @@ const guideSystem = {
         { type: BLOCK.DESERT, label: '沙化块' },
         { type: BLOCK.ORGANIC, label: '有机物' },
         { type: BLOCK.LOOSE_SOIL, label: '疏松土块' },
-        { type: BLOCK.HEALTHY_FARM, label: '基本农田' }
+        { type: BLOCK.HEALTHY_FARM, label: '永久基本农田' }
       ];
-      blockIntroText = '本关含<strong>3种污染物</strong>：板结块、沙化块、有机污染物。<br>消除污染物产生<strong>疏松土块</strong>，再消除疏松土块即可复耕为<strong>基本农田</strong> 🌱';
+      blockIntroText = '本关含<strong>3种污染物</strong>：板结块、沙化块、有机污染物。<br>消除污染物产生<strong>疏松土块</strong>，再消除疏松土块即可复耕为<strong>永久基本农田</strong> 🌱';
     } else if (lv === 2) {
       highlightType = BLOCK.HEAVY_METAL;
       blockIntroTitle = '方块类型介绍 · 新增重金属';
@@ -3678,7 +3678,7 @@ const guideSystem = {
         { type: BLOCK.ORGANIC, label: '有机物' },
         { type: BLOCK.HEAVY_METAL, label: '重金属' },
         { type: BLOCK.LOOSE_SOIL, label: '疏松土块' },
-        { type: BLOCK.HEALTHY_FARM, label: '基本农田' }
+        { type: BLOCK.HEALTHY_FARM, label: '永久基本农田' }
       ];
       blockIntroText = '🆕 <strong style="color:#F0DC82;">新增：重金属污染块！</strong><br>紫色毒液纹理，需与其他污染物一样通过三消清除。<br>四重威胁并存，土地修复需要更科学的规划。';
     } else {
@@ -3691,7 +3691,7 @@ const guideSystem = {
         { type: BLOCK.HEAVY_METAL, label: '重金属' },
         { type: BLOCK.SALINE, label: '盐碱晶' },
         { type: BLOCK.LOOSE_SOIL, label: '疏松土块' },
-        { type: BLOCK.HEALTHY_FARM, label: '基本农田' }
+        { type: BLOCK.HEALTHY_FARM, label: '永久基本农田' }
       ];
       blockIntroText = '🆕 <strong style="color:#F0DC82;">新增：盐碱晶！</strong><br>白色冰晶纹理，五种退化全部登场。<br>这是最终的考验——守护每一寸良田！';
     }
@@ -3699,12 +3699,12 @@ const guideSystem = {
     return [
       {
         title: '关卡主题', target: 'level-name',
-        text: '这里是<strong>当前关卡名称</strong>。<br>本关「' + levelName + '」需要修复<strong>' + target + '</strong>块基本农田来通关。',
+        text: '这里是<strong>当前关卡名称</strong>。<br>本关「' + levelName + '」需要修复<strong>' + target + '</strong>块永久基本农田来通关。',
         icon: '🏷️', arrow: 'down'
       },
       {
         title: '复耕进度', target: 'reclaim-progress',
-        text: '🌾 <strong>复耕进度</strong>：显示你已修复的基本农田数量。<br>当前目标：修复 <strong>' + target + '</strong> 块耕地。<br>每次消除<em>疏松土块</em>可复耕1块！',
+        text: '🌾 <strong>复耕进度</strong>：显示你已修复的永久基本农田数量。<br>当前目标：修复 <strong>' + target + '</strong> 块耕地。<br>每次消除<em>疏松土块</em>可复耕1块！',
         icon: '🌾', arrow: 'down'
       },
       {
@@ -3725,7 +3725,7 @@ const guideSystem = {
       },
       {
         title: '消除规则', target: 'board-wrapper',
-        text: '📐 <strong>三消规则</strong>：<br>· 3个相同污染物相邻→中间变疏松土块<br>· 3个疏松土块相邻→中间变基本农田！<br>· 重力掉落+自动连消',
+        text: '📐 <strong>三消规则</strong>：<br>· 3个相同污染物相邻→中间变疏松土块<br>· 3个疏松土块相邻→中间变永久基本农田！<br>· 重力掉落+自动连消',
         icon: '📐', arrow: 'up', isBoard: true
       }
     ];
@@ -3845,7 +3845,7 @@ const guideSystem = {
     this.tooltip.innerHTML = '<div style="text-align:center;">' +
       '<span style="font-size:28px;">🌱</span>' +
       '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
-      '<strong>太好了！</strong>你成功复耕了<br>第一块<strong>基本农田</strong>！🌾<br>继续守护这片土地吧！</div>' +
+      '<strong>太好了！</strong>你成功复耕了<br>第一块<strong>永久基本农田</strong>！🌾<br>继续守护这片土地吧！</div>' +
       '<div class="guide-close" id="guide-next-btn">继续</div></div>';
     this.positionNear(document.getElementById('board-wrapper'), 'up', true);
     this.backdrop.classList.add('active');
@@ -4031,7 +4031,7 @@ const tutorialSystem = {
       html = '<div style="text-align:center;">' +
         '<span style="font-size:28px;">🌱</span>' +
         '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
-        '<strong>最后一步！</strong><br>交换这两个<strong style="color:#F0DC82;">疏松土块</strong><br>复耕第一块基本农田！</div>' +
+        '<strong>最后一步！</strong><br>交换这两个<strong style="color:#F0DC82;">疏松土块</strong><br>复耕第一块永久基本农田！</div>' +
         '<div class="guide-close" id="tutorial-skip-btn" style="margin-top:6px;opacity:0.6;font-size:10px;">跳过教程 →</div></div>';
     }
 
@@ -4103,7 +4103,7 @@ const tutorialSystem = {
       tooltip.innerHTML = '<div style="text-align:center;">' +
         '<span style="font-size:32px;">🌾</span>' +
         '<div style="font-size:13px;line-height:1.7;margin:6px 0;">' +
-        '<strong>太棒了！</strong>你成功复耕了<br>第一块<strong style="color:#66BB6A;">基本农田</strong>！</div>' +
+        '<strong>太棒了！</strong>你成功复耕了<br>第一块<strong style="color:#66BB6A;">永久基本农田</strong>！</div>' +
         '<div class="guide-close" id="tutorial-done-btn">🎮 开始游戏</div></div>';
       guideSystem.positionNear(document.getElementById('board-wrapper'), 'up', true);
       backdrop.classList.add('active');
@@ -4367,7 +4367,7 @@ function startGame() {
   console.log('🌾 沃土新生 — Ready');
   console.log('关卡:', game.levelConfig.name);
   console.log('棋盘:', game.levelConfig.size + '×' + game.levelConfig.size);
-  console.log('目标: 复耕', game.target, '块基本农田');
+  console.log('目标: 复耕', game.target, '块永久基本农田');
 }
 
 // startGame() is called by the preloader (onAllImagesReady) after all images load
